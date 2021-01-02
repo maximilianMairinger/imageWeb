@@ -11,3 +11,4 @@ src
 ./rollup.web.common.config.js
 ./rollup.sever.dev.config.js
 ./rollup.web.dev.config.js
+try
