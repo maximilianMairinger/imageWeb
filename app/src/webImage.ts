@@ -3,19 +3,61 @@ import isImage from "is-image"
 import fss, { promises as fs } from "fs"
 import pth from "path"
 import slash from "slash"
+import xrray from "xrray"; xrray(Array)
+import cliProgress, { SingleBar } from "cli-progress"
 
-
+class QuickPromise<T> extends Promise<T> {
+  constructor(call: (resQuick: Function, resDone: Function) => void) {
+    super((res) => {
+      call((val) => {
+        res(val)
+      }, (val) => {
+        this.dones.Call(val)
+        this.done = (f) => {
+          if (f === undefined) return Promise.resolve(val)
+          else f(val)
+          return this
+        }
+      })
+    })
+  }
+  private dones = []
+  done(then?: Function) {
+    if (then === undefined) return new Promise((res) => {this.dones.add(res)})
+    else this.dones.add(then)
+    return this
+  }
+}
 function constructGetImg(foundCb: (url: string, pathWithoutExtension: string) => void) {
   return function getImg(dirs: string[], sub: string) {
-    for (let dir of dirs) {
-      (async () => {
-        const subDir = pth.join(sub, dir)
-        if ((await fs.lstat(subDir)).isDirectory())  {
-          getImg(await fs.readdir(subDir), subDir)
-        }
-        else if (isImage(subDir)) foundCb(subDir, removeExtension(subDir))
-      })()
-    }
+    return new QuickPromise((resQuick, resDone) => {
+      const proms: QuickPromise<any>[] = []
+      const founds = []
+      const promsDone = []
+      const totaloPromo = []
+      for (let dir of dirs) {
+        totaloPromo.add((async () => {
+          const subDir = pth.join(sub, dir)
+          
+          if ((await fs.lstat(subDir)).isDirectory()) {
+            proms.add(getImg(await fs.readdir(subDir), subDir))
+          }
+          else if (isImage(subDir)) {
+            founds.add(subDir)
+            promsDone.add(foundCb(subDir, removeExtension(subDir)))
+          }
+        })())
+      }
+      
+      Promise.all(totaloPromo).then(() => {
+        const quickDone = Promise.all(proms).then((found: string[]) => {
+          resQuick([...founds, ...(found as any).flat()])
+        })
+        Promise.all([quickDone, ...promsDone, ...proms.Inner("done", [])]).then((val) => {
+          resDone(val)
+        })
+      })
+    })
   }
 }
 
@@ -24,7 +66,18 @@ function removeExtension(fileName: string) {
 }
 
 
-type ImageFormats = "png" | "webp" | "jpg" | "avif" | "tiff"
+
+const compressionOffset = {
+  png: 1,
+  webp: 1.2,
+  jpg: 1.2,
+  tiff: 1.2,
+  avif: 1.5
+}
+
+type ImageFormats = keyof typeof compressionOffset
+
+
 type Pixels = number
 const imageResolutions = {
   "4K": 8294400, // 2160p
@@ -43,7 +96,7 @@ const heightToWidthFactor = 16 / 9
 
 function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[]) {
   return resolutions.map((res) => {
-    if (typeof res === "string") res = {pixels: imageResolutions[res], name: res}
+    if (typeof res === "string") res = {pixels: imageResolutions[res.toLowerCase()], name: res}
     else if (typeof res === "number") res = {pixels: res, name: res.toString()}
     else {
       if ((res as any).width === undefined) (res as any).width = (res as any).height * heightToWidthFactor
@@ -56,6 +109,14 @@ function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: 
   })
 }
 
+function constrFactorize(factor: number) {
+  return function factorize(length: number) {
+    const q = Math.round(length / factor)
+    return q < 1 ? 1 : q
+  }
+}
+
+
 export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[]) {
   const reses = normalizeResolution(resolutions)
   return async function (inputDir: string, outputDir: string) {
@@ -66,50 +127,71 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
     let iii = inputDir
     if (iii.endsWith("/")) iii = iii.slice(0, -1)
     const slashCount = iii.split("/").length
-    console.log("shalsh", slashCount)
+
+    const progress = new SingleBar({}, cliProgress.Presets.legacy)
+    progress.start(1000, 0)
+
+    let total = 1
+    let done = 1
     constructGetImg(async (path, fileName) => {
       fileName = slash(fileName)
       fileName = fileName.split("/").slice(slashCount).join("/")
 
-      const img = sharp(path)
+      const img = sharp(path) as ReturnType<typeof sharp> & {export: (format: string, name?: string) => Promise<void>}
+      
+      img.export = (format: string, name: string) => {
+        progress.setTotal(total++)
+        const exportName = `${fileName}@${name}.${format.toLowerCase()}`
+        const prom = img.toFile(pth.join(outputDir, `${exportName}`)) as any as Promise<void>
+        prom.then(() => {
+          progress.update(done++)
+        })
+        return prom
+      }
+
       const meta = await img.metadata()
       const hasPixels = meta.width * meta.height
-      console.log("hasPixels", path, hasPixels)
-      console.log("width", meta.width, "height", meta.height)
-      for (let res of reses) {
-        if (hasPixels > res.pixels) {
-          const factor = Math.sqrt(hasPixels / res.pixels)
-          console.log("resize", res.name, factor, {
-            width: Math.round(meta.width / factor) || 1,
-            height: Math.round(meta.height / factor) || 1
-          })
-          img.resize({
-            width: Math.round(meta.width / factor) || 1,
-            height: Math.round(meta.height / factor) || 1
-          })
-        }
 
-        for (let format of formats) {
-          img.toFile(pth.join(outputDir, `${fileName}@${res.name}.${format.toLowerCase()}`))
+      const proms = []
+      for (let res of reses) {
+        const exp = img.export
+        const name = res.name
+        img.export = (format: string) => exp(format, name)
+
+        if (hasPixels > res.pixels) {
+          for (let format of formats) {
+            const factorize = constrFactorize(Math.sqrt(hasPixels * compressionOffset[format] / res.pixels))
+            
+            img.resize({
+              width: factorize(meta.width),
+              height: factorize(meta.height)
+            })
+
+            proms.add(img.export(format))
+          }
         }
+        else for (let format of formats) proms.add(img.export(format))
+
+        await Promise.all(proms)
       }
-      
-      
-      
-      
-    })([inputDir], "")
+    })([inputDir], "").done(() => {
+      progress.stop()
+      console.log("done")
+    })
   }
   
 }
 
 
-export const webImage = constrWebImage(["webp", "jpg", "png"], [
-  "4K",
-  100,
-  {pixels: 200},
-  {pixels: 200, name: "zweihundert"},
-  {width: 200, name: "widthZweihundert"},
-  {height: 200, name: "heightZweihundert"},
+export const webImage = constrWebImage(["webp", "jpg", "png", "avif"], [
+  // "4K",
+  "FHD",
+  // 408960
+  // 100,
+  // {pixels: 200},
+  // {pixels: 200, name: "zweihundert"},
+  // {width: 200, name: "widthZweihundert"},
+  // {height: 200, name: "heightZweihundert"},
 ])
 
 export default webImage
