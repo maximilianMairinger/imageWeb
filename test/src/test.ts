@@ -1,4 +1,4 @@
-import webImage from "../../app/src/webImage"
+import imageWeb from "../../app/src/imageWeb"
 
 describe("core", () => {
   

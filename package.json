@@ -2,22 +2,22 @@
   "name": "image-web",
   "version": "0.0.1",
   "description": "Image optimisation and compression for the web.",
-  "main": "app/dist/webImage.js",
-  "types": "app/dist/webImage.d.ts",
+  "main": "app/dist/imageWeb.js",
+  "types": "app/dist/imageWeb.d.ts",
   "scripts": {
     "build": "tsc -p ./tsconfig.prod.json",
     "dev": "npm run devNode",
     "devWeb": "rollup --config rollup.web.dev.config.js -w",
     "devNode": "rollup --config rollup.node.dev.config.js -w",
     "deploy": "npm run build && npm publish",
-    "repl": "del-cli ./test_out/** && node ./repl/dist/webImage-repl.js",
+    "repl": "del-cli ./test_out/** && node ./repl/dist/imageWeb-repl.js",
     "start": "npm run repl",
     "buildTest": "rollup --config rollup.node.test.config.js",
     "test": "npm run buildTest && jest"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/maximilianMairinger/webImage.git"
+    "url": "git+https://github.com/maximilianMairinger/imageWeb.git"
   },
   "keywords": [
     "web",
@@ -32,9 +32,9 @@
   "author": "Maximilian Mairinger",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/maximilianMairinger/webImage/issues"
+    "url": "https://github.com/maximilianMairinger/imageWeb/issues"
   },
-  "homepage": "https://github.com/maximilianMairinger/webImage#readme",
+  "homepage": "https://github.com/maximilianMairinger/imageWeb#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^13.0.0",
     "@rollup/plugin-json": "^4.1.0",
