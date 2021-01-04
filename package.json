@@ -10,7 +10,7 @@
     "devWeb": "rollup --config rollup.web.dev.config.js -w",
     "devNode": "rollup --config rollup.node.dev.config.js -w",
     "deploy": "npm run build && npm publish",
-    "repl": "del-cli ./test_out && node ./repl/dist/webImage-repl.js",
+    "repl": "del-cli ./test_out/** && node ./repl/dist/webImage-repl.js",
     "start": "npm run repl",
     "buildTest": "rollup --config rollup.node.test.config.js",
     "test": "npm run buildTest && jest"

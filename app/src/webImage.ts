@@ -69,10 +69,10 @@ function removeExtension(fileName: string) {
 
 const compressionOffset = {
   png: 1,
-  webp: 1.2,
-  jpg: 1.2,
-  tiff: 1.2,
-  avif: 1.5
+  webp: 1.6,
+  jpg: 1.4,
+  tiff: 1.3,
+  avif: 1.8
 }
 
 type ImageFormats = keyof typeof compressionOffset
@@ -96,7 +96,7 @@ const heightToWidthFactor = 16 / 9
 
 function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[]) {
   return resolutions.map((res) => {
-    if (typeof res === "string") res = {pixels: imageResolutions[res.toLowerCase()], name: res}
+    if (typeof res === "string") res = {pixels: imageResolutions[res.toUpperCase()], name: res}
     else if (typeof res === "number") res = {pixels: res, name: res.toString()}
     else {
       if ((res as any).width === undefined) (res as any).width = (res as any).height * heightToWidthFactor
@@ -117,8 +117,9 @@ function constrFactorize(factor: number) {
 }
 
 
-export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[]) {
+export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true) {
   const reses = normalizeResolution(resolutions)
+  
   return async function (inputDir: string, outputDir: string) {
     if (!(fss.existsSync(outputDir) && (await fs.lstat(outputDir)).isDirectory())) await fs.mkdir(outputDir)
     inputDir = slash(inputDir)
@@ -129,7 +130,7 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
     const slashCount = iii.split("/").length
 
     const progress = new SingleBar({}, cliProgress.Presets.legacy)
-    progress.start(1000, 0)
+    progress.start(1, 0)
 
     let total = 1
     let done = 1
@@ -154,23 +155,24 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
       const proms = []
       for (let res of reses) {
-        const exp = img.export
         const name = res.name
-        img.export = (format: string) => exp(format, name)
+        function render(format: string) {
+          return img.export(format, name)
+        }
 
         if (hasPixels > res.pixels) {
           for (let format of formats) {
-            const factorize = constrFactorize(Math.sqrt(hasPixels * compressionOffset[format] / res.pixels))
+            const factorize = constrFactorize(Math.sqrt(hasPixels / (res.pixels * (dynamicResolution ? compressionOffset[format] : 1))))
             
             img.resize({
               width: factorize(meta.width),
               height: factorize(meta.height)
             })
 
-            proms.add(img.export(format))
+            proms.add(render(format))
           }
         }
-        else for (let format of formats) proms.add(img.export(format))
+        else for (let format of formats) proms.add(render(format))
 
         await Promise.all(proms)
       }
@@ -183,9 +185,9 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 }
 
 
-export const webImage = constrWebImage(["webp", "jpg", "png", "avif"], [
+export const webImage = constrWebImage(["jpg", "webp", "png", "avif"], [
   // "4K",
-  "FHD",
+  "SD"
   // 408960
   // 100,
   // {pixels: 200},
