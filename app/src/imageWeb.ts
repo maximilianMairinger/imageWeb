@@ -69,7 +69,7 @@ function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) =
   }
 }
 
-function removeExtension(fileName: string) {
+export function removeExtension(fileName: string) {
   return fileName.replace(/\.[^/.]+$/, "")
 }
 
