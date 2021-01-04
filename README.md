@@ -17,7 +17,7 @@ Image optimisation and compression for the web.
 ```ts
 import webImage from "web-image"
 
-webImage()
+webImage("src/res/img", "dist/res/img")
 ```
 
 ## Contribute
