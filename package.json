@@ -2,7 +2,7 @@
   "name": "image-web",
   "version": "0.0.1",
   "description": "Image optimisation and compression for the web.",
-  "bin": "./app/dist/esm/cli.js",
+  "bin": "./app/dist/cjs/cli.js",
   "main": "./app/dist/esm/imageWeb.js",
   "types": "./app/dist/esm/imageWeb.d.ts",
   "exports": {
@@ -13,7 +13,9 @@
     "default": "./app/dist/esm/imageWeb.js"
   },
   "scripts": {
-    "build": "tsc -p ./tsconfig.prod.cjs.json && tsc -p ./tsconfig.prod.esm.json",
+    "build": "npm run buildCJS && npm run buildESM",
+    "buildCJS": "tsc -p ./tsconfig.prod.cjs.json",
+    "buildESM": "tsc -p ./tsconfig.prod.esm.json",
     "dev": "npm run devNode",
     "devWeb": "rollup --config rollup.web.dev.config.js -w",
     "devNode": "rollup --config rollup.node.dev.config.js -w",
