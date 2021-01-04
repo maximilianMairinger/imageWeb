@@ -5,6 +5,7 @@ import pth from "path"
 import slash from "slash"
 import xrray from "xrray"; xrray(Array)
 import cliProgress, { SingleBar } from "cli-progress"
+import logUpdate from "log-update"
 
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
@@ -28,9 +29,10 @@ class QuickPromise<T> extends Promise<T> {
     return this
   }
 }
-function constructGetImg(foundCb: (url: string, pathWithoutExtension: string) => void) {
+
+function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) => void) {
   return function getImg(dirs: string[], sub: string) {
-    return new QuickPromise((resQuick, resDone) => {
+    return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone) => {
       const proms: QuickPromise<any>[] = []
       const founds = []
       const promsDone = []
@@ -38,23 +40,29 @@ function constructGetImg(foundCb: (url: string, pathWithoutExtension: string) =>
       for (let dir of dirs) {
         totaloPromo.add((async () => {
           const subDir = pth.join(sub, dir)
-          
+        
           if ((await fs.lstat(subDir)).isDirectory()) {
             proms.add(getImg(await fs.readdir(subDir), subDir))
           }
           else if (isImage(subDir)) {
-            founds.add(subDir)
-            promsDone.add(foundCb(subDir, removeExtension(subDir)))
+            const fileName = removeExtension(subDir)
+            const path = subDir
+            founds.add({path, fileName})
+            if (foundCb) promsDone.add(foundCb(path, fileName))
           }
+          
+          
         })())
       }
       
       Promise.all(totaloPromo).then(() => {
-        const quickDone = Promise.all(proms).then((found: string[]) => {
-          resQuick([...founds, ...(found as any).flat()])
+        const quickDone = Promise.all(proms).then((found: any[]) => {
+          const r = [...founds, ...(found as any).flat()]
+          resQuick(r)
+          return r
         })
-        Promise.all([quickDone, ...promsDone, ...proms.Inner("done", [])]).then((val) => {
-          resDone(val)
+        Promise.all([quickDone, ...promsDone, ...proms.Inner("done", [])]).then((e) => {
+          resDone(e[0])
         })
       })
     })
@@ -125,6 +133,8 @@ function constrFactorize(factor: number) {
 export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true) {
   const reses = normalizeResolution(resolutions)
   return async function (inputDir: string, outputDir: string) {
+    console.log("")
+
     if (!(fss.existsSync(outputDir) && (await fs.lstat(outputDir)).isDirectory())) await fs.mkdir(outputDir)
     inputDir = slash(inputDir)
     outputDir = slash(outputDir)
@@ -134,18 +144,15 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
     const slashCount = iii.split("/").length
 
     const progress = new SingleBar({}, cliProgress.Presets.legacy)
-    progress.start(1, 0)
 
-    let total = 1
     let done = 1
-    constructGetImg(async (path, fileName) => {
+    const render = async (path: string, fileName: string) => {
       fileName = slash(fileName)
       fileName = fileName.split("/").slice(slashCount).join("/")
 
       const img = sharp(path) as ReturnType<typeof sharp> & {export: (format: string, name?: string) => Promise<void>}
       
       img.export = (format: string, name: string) => {
-        progress.setTotal(total++)
         const exportName = `${fileName}@${name}.${format.toLowerCase()}`
         const prom = img.toFile(pth.join(outputDir, `${exportName}`)) as any as Promise<void>
         prom.then(() => {
@@ -180,7 +187,24 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
         await Promise.all(proms)
       }
-    })([inputDir], "").done(() => {
+    }
+
+    console.log("Searching...")
+    logUpdate("Found 0 files")
+    let found = 1
+    constructGetImg(async () => {
+      logUpdate(`Found ${found++} files`)
+    })([inputDir], "").done(async (todo) => {
+      console.log("Rendering...")
+      progress.start(todo.length * reses.length * formats.length, 0)
+
+      const proms = []
+      for (let e of todo) {
+        proms.add(render(e.path, e.fileName))
+      }
+
+      await Promise.all(proms)
+
       progress.stop()
       console.log("done")
     })
@@ -194,10 +218,9 @@ export const webImage = constrWebImage(["jpg", "webp", "png", "avif"], [
   // "SD",
   // 408960,
   // 100,
-  {pixels: 200},
-  // {pixels: 200, name: "zweihundert"},
-  // {width: 200, name: "widthZweihundert"},
-  // {height: 200, name: "heightZweihundert"},
+  // {pixels: 200},
+  {width: 10000, name: "width"},
+  {height: 10000, name: "height"},
 ])
 
 export default webImage

@@ -54,6 +54,7 @@
   "dependencies": {
     "cli-progress": "^3.8.2",
     "is-image": "^3.0.0",
+    "log-update": "^4.0.0",
     "sharp": "^0.27.0",
     "slash": "^3.0.0",
     "xrray": "^4.7.3"
