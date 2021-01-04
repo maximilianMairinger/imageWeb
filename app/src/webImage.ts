@@ -87,7 +87,7 @@ type ImageFormats = keyof typeof compressionOffset
 
 
 type Pixels = number
-const imageResolutions = {
+export const imageResolutions = {
   "4K": 8294400, // 2160p
   "3K": 3686400, // 1440p
   "FHD": 2073600, // 1080p
@@ -130,9 +130,9 @@ function constrFactorize(factor: number) {
 }
 
 
-export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true) {
+export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true, _silent: boolean = false) {
   const reses = normalizeResolution(resolutions)
-  return async function (inputDir: string, outputDir: string, silent: boolean = false) {
+  return async function (inputDir: string, outputDir: string, silent: boolean = _silent) {
     if (!(fss.existsSync(outputDir) && (await fs.lstat(outputDir)).isDirectory())) await fs.mkdir(outputDir)
     inputDir = slash(inputDir)
     outputDir = slash(outputDir)
