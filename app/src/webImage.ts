@@ -99,9 +99,14 @@ function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: 
     if (typeof res === "string") res = {pixels: imageResolutions[res.toUpperCase()], name: res}
     else if (typeof res === "number") res = {pixels: res, name: res.toString()}
     else {
-      if ((res as any).width === undefined) (res as any).width = (res as any).height * heightToWidthFactor
-      else if ((res as any).height === undefined) (res as any).height = (res as any).width / heightToWidthFactor
-      const pixels = (res as any).height * (res as any).width
+      let pixels: number
+      if ((res as any).pixels !== undefined) pixels = (res as any).pixels
+      else {
+        if ((res as any).width === undefined) (res as any).width = (res as any).height * heightToWidthFactor
+        else if ((res as any).height === undefined) (res as any).height = (res as any).width / heightToWidthFactor
+        pixels = (res as any).height * (res as any).width
+      }
+      
       res = {name: res.name !== undefined ? res.name : pixels.toString(), pixels}
     }
 
@@ -119,7 +124,6 @@ function constrFactorize(factor: number) {
 
 export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true) {
   const reses = normalizeResolution(resolutions)
-  
   return async function (inputDir: string, outputDir: string) {
     if (!(fss.existsSync(outputDir) && (await fs.lstat(outputDir)).isDirectory())) await fs.mkdir(outputDir)
     inputDir = slash(inputDir)
@@ -187,10 +191,10 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
 export const webImage = constrWebImage(["jpg", "webp", "png", "avif"], [
   // "4K",
-  "SD"
-  // 408960
+  // "SD",
+  // 408960,
   // 100,
-  // {pixels: 200},
+  {pixels: 200},
   // {pixels: 200, name: "zweihundert"},
   // {width: 200, name: "widthZweihundert"},
   // {height: 200, name: "heightZweihundert"},
