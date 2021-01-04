@@ -132,9 +132,7 @@ function constrFactorize(factor: number) {
 
 export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true) {
   const reses = normalizeResolution(resolutions)
-  return async function (inputDir: string, outputDir: string) {
-    console.log("")
-
+  return async function (inputDir: string, outputDir: string, silent: boolean = false) {
     if (!(fss.existsSync(outputDir) && (await fs.lstat(outputDir)).isDirectory())) await fs.mkdir(outputDir)
     inputDir = slash(inputDir)
     outputDir = slash(outputDir)
@@ -189,14 +187,25 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
       }
     }
 
-    console.log("Searching...")
-    logUpdate("Found 0 files")
-    let found = 1
-    constructGetImg(async () => {
-      logUpdate(`Found ${found++} files`)
-    })([inputDir], "").done(async (todo) => {
-      console.log("Rendering...")
-      progress.start(todo.length * reses.length * formats.length, 0)
+
+    
+    let find: ReturnType<typeof constructGetImg>
+    if (!silent) {
+      console.log("Searching...")
+      logUpdate("Found 0 files")
+      let found = 1
+      find = constructGetImg(async () => {
+        logUpdate(`Found ${found++} files`)
+      })
+    }
+    else find = constructGetImg()
+    
+    find([inputDir], "").done(async (todo) => {
+      
+      if (!silent) {
+        console.log("Rendering...")
+        progress.start(todo.length * reses.length * formats.length, 0)
+      }
 
       const proms = []
       for (let e of todo) {
@@ -205,8 +214,10 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
       await Promise.all(proms)
 
-      progress.stop()
-      console.log("done")
+      if (!silent) {
+        progress.stop()
+        console.log("done")
+      }
     })
   }
   
