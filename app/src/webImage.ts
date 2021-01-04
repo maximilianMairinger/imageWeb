@@ -214,13 +214,11 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
 
 export const webImage = constrWebImage(["jpg", "webp", "png", "avif"], [
-  // "4K",
-  // "SD",
-  // 408960,
-  // 100,
-  // {pixels: 200},
-  {width: 10000, name: "width"},
-  {height: 10000, name: "height"},
+  "4K",
+  "3K",
+  "FHD",
+  "HD",
+  "PREV"
 ])
 
 export default webImage
