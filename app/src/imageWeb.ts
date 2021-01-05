@@ -9,6 +9,7 @@ import * as logUpdate from "log-update"
 const { promises: fs } = fss
 const { SingleBar } = cliProgress
 import mkDir from "make-dir"
+import merge from "deepmerge"
 
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
@@ -78,7 +79,7 @@ export function removeExtension(fileName: string) {
 
 
 
-const compressionOffset = {
+export const compressionOffset = {
   png: 1,
   webp: 1.6,
   jpg: 1.4,
@@ -132,10 +133,20 @@ function constrFactorize(factor: number) {
   }
 }
 
+type Options = {
+  silent?: boolean,
+  dynamicResolution?: boolean
+}
+const defaultOptions: Options = {
+  silent: false,
+  dynamicResolution: true
+}
 
-export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true, _silent: boolean = false) {
+export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
+  _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
-  return async function (inputDir: string, outputDir: string, silent: boolean = _silent) {
+  return async function (inputDir: string, outputDir: string, options: Options = {}) {
+    options = merge(_options, options)
     mkDir(outputDir)
     if (!(fss.existsSync(inputDir) || fss.lstatSync(inputDir).isDirectory)) throw new Error("Input dir not found.")
     inputDir = slash(inputDir)
