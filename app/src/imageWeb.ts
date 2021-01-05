@@ -186,7 +186,7 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
         if (hasPixels > res.pixels) {
           for (let format of formats) {
-            const factorize = constrFactorize(Math.sqrt(hasPixels / (res.pixels * (dynamicResolution ? compressionOffset[format] : 1))))
+            const factorize = constrFactorize(Math.sqrt(hasPixels / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1))))
             
             img.resize({
               width: factorize(meta.width),
@@ -205,7 +205,7 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
     
     let find: ReturnType<typeof constructGetImg>
-    if (!silent) {
+    if (!options.silent) {
       console.log("Searching...")
       logUpdate("Found 0 files")
       let found = 1
@@ -217,7 +217,7 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
     
     find([inputDir], "").done(async (todo) => {
       
-      if (!silent) {
+      if (!options.silent) {
         console.log("Rendering...")
         progress.start(todo.length * reses.length * formats.length, 0)
       }
@@ -229,7 +229,7 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
 
       await Promise.all(proms)
 
-      if (!silent) {
+      if (!options.silent) {
         progress.stop()
         console.log("done")
       }
