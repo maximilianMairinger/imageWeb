@@ -8,8 +8,8 @@ import * as cliProgress from "cli-progress"
 import * as logUpdate from "log-update"
 const { promises: fs } = fss
 const { SingleBar } = cliProgress
-import mkDir from "make-dir"
-import merge from "deepmerge"
+const mkDir = require("make-dir")
+const merge = require("deepmerge")
 
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
@@ -145,16 +145,18 @@ const defaultOptions: Options = {
 export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
-  return async function (inputDir: string, outputDir: string, options: Options = {}) {
+  return async function (input: string, outputDir: string, options: Options = {}) {
     options = merge(_options, options)
-    mkDir(outputDir)
-    if (!(fss.existsSync(inputDir) || fss.lstatSync(inputDir).isDirectory)) throw new Error("Input dir not found.")
-    inputDir = slash(inputDir)
+    input = slash(input)
     outputDir = slash(outputDir)
 
-    let iii = inputDir
+    if (!fss.existsSync(input)) throw new Error("Input cannot be found")
+    mkDir(outputDir)
+
+    let iii = input
     if (iii.endsWith("/")) iii = iii.slice(0, -1)
-    const slashCount = iii.split("/").length
+    const slashCount = iii.split("/").length - (!fss.lstatSync(input).isDirectory() ? 1 : 0)
+
 
     const progress = new SingleBar({}, cliProgress.Presets.legacy)
 
@@ -215,7 +217,7 @@ export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResol
     }
     else find = constructGetImg()
     
-    find([inputDir], "").done(async (todo) => {
+    find([input], "").done(async (todo) => {
       
       if (!options.silent) {
         console.log("Rendering...")
