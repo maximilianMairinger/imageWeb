@@ -4,10 +4,7 @@ import * as path from "path"
 import imageWeb, { imageResolutions, compressionOffset, constrWebImage } from "../imageWeb"
 import { program } from "commander"
 import config from "req-package-json"
-
-
-const commonResolutions = Object.keys(imageResolutions)
-const commonAlgorithem = Object.keys(compressionOffset)
+import findNextDirname from "./findNextDirname"
 
 program
   .version(config.version)
@@ -16,32 +13,37 @@ program
 program
   .option('-s, --silent', 'silence stdout')
   .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
-  .option('-a, --algorithms <algorithms>', 'space seperated list of image compression algorithms. Availible are "avif webp jpg tiff png"')
-  .option('-a, --resolutions <resolutions>', 'space seperated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
+  .option('-a, --algorithms <algorithms>', 'comma seperated list of image compression algorithms. Availible are "avif webp jpg tiff png"')
+  .option('-r, --resolutions <resolutions>', 'comma seperated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
 .parse(process.argv)
+
+
+const commonResolutions = Object.keys(imageResolutions)
+const commonAlgorithem = Object.keys(compressionOffset)
 
 let [ input, output ] = program.args
 input = path.resolve("", input ? input : "")
-output = path.resolve("", output ? output : config.name + "_output")
+output = path.resolve("", output ? output : path.join(config.name + "_output", findNextDirname(input)))
 
 let render: typeof imageWeb
 if (program.algorithms || program.resolutions) {
-  const algs = program.algorithms.split(" ")
-  const reses = program.resolutions.split(" ")
+  let algs = program.algorithms.split(",")
+  let reses = program.resolutions.split(",")
 
-  algs.map(a => {
-    if (commonAlgorithem.includes(a)) return a
-    else throw new Error("Unknown algorithm " + a)
+  algs = algs.map(alg => {
+    if (commonAlgorithem.includes(alg)) return alg
+    else throw new Error("Unknown algorithm " + alg)
   })
 
-  reses.map(a => {
-    if (!isNaN(+a)) return +a
-    else if (commonResolutions.includes(a)) return a
-    else throw new Error("Unknown algorithm " + a)
+  reses = reses.map(res => {
+    if (!isNaN(+res)) return +res
+    else if (commonResolutions.includes(res)) return res
+    else throw new Error("Unknown resolution " + res)
   })
 
   render = constrWebImage(algs, reses)
 }
+else render = imageWeb
 
 render(input, output, {
   silent: program.silent,
