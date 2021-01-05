@@ -3,10 +3,8 @@
 import * as path from "path"
 import imageWeb from "../imageWeb"
 import { program } from "commander"
-import packageJsonConfig from "./packageJsonConfig"
+import config from "req-package-json"
 
-
-const config = packageJsonConfig()
 
 program
   .version(config.version)
@@ -23,5 +21,5 @@ program.silent
 
 console.log("inp", input)
 console.log("out", output)
-imageWeb(input, output)
+// imageWeb(input, output)
 
