@@ -8,6 +8,7 @@ import * as cliProgress from "cli-progress"
 import * as logUpdate from "log-update"
 const { promises: fs } = fss
 const { SingleBar } = cliProgress
+import mkDir from "make-dir"
 
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
@@ -135,7 +136,8 @@ function constrFactorize(factor: number) {
 export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], dynamicResolution = true, _silent: boolean = false) {
   const reses = normalizeResolution(resolutions)
   return async function (inputDir: string, outputDir: string, silent: boolean = _silent) {
-    if (!(fss.existsSync(outputDir) && (await fs.lstat(outputDir)).isDirectory())) await fs.mkdir(outputDir)
+    mkDir(outputDir)
+    if (!(fss.existsSync(inputDir) || fss.lstatSync(inputDir).isDirectory)) throw new Error("Input dir not found.")
     inputDir = slash(inputDir)
     outputDir = slash(outputDir)
 
