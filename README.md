@@ -23,10 +23,18 @@ Take files from `src/res/img` compress them (as *avif, webp, jpg & png* in *4K, 
 ```ts
 import webImage from "web-image"
 
-webImage("src/res/img", "dist/res/img", /* silent: boolean = false */)
+webImage("src/res/img", "dist/res/img")
 ```
 
 #### Options
+
+By default, the compression algorithms generally produce images at different visual fidelity (avif looks, despite being qualitative much better, worse than jpg at the same resolution). Web image tries to mitigate this issue by scaling up the resolution dynamically, depending on the algorithm used. You may disable this behaviour like this
+
+```ts
+import webImage from "web-image"
+
+webImage("src/res/img", "dist/res/img", { silent: false, dynamicResolution: true })
+```
 
 The default export is a basic configured instance. For custom configurations: 
 
@@ -41,14 +49,14 @@ const webImage = constrWebImage(["avif", "webp", "jpg"], [
 ])
 ```
 
-By default, the compression algorithms generally produce images at different visual fidelity (avif looks, despite being qualitative much better, worse than jpg at the same resolution). Web image tries to mitigate this issue by scaling up the resolution dynamically, depending on the algorithm used. You may disable this behaviour like this
+Options can be given here too. Those will be applied to all instance call, when not overwritten.
 
 ```ts
 import { constrWebImage } from "web-image"
 
 const webImage = constrWebImage(["avif", "jpg"], [
   "FHD"
-], /* dynamicResolution: boolean = true */ false, /* silent: boolean = false */ false)
+], { silent: false, dynamicResolution: true })
 ```
 
 ##### Supported algorithms
