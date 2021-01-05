@@ -1,11 +1,13 @@
-import sharp from "sharp"
-import isImage from "is-image"
-import fss, { promises as fs } from "fs"
-import pth from "path"
-import slash from "slash"
+import * as sharp from "sharp"
+const isImage = require("is-image")
+import * as fss from "fs"
+import * as pth from "path"
+const slash = require("slash")
 import xrray from "xrray"; xrray(Array)
-import cliProgress, { SingleBar } from "cli-progress"
-import logUpdate from "log-update"
+import * as cliProgress from "cli-progress"
+import * as logUpdate from "log-update"
+const { promises: fs } = fss
+const { SingleBar } = cliProgress
 
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
