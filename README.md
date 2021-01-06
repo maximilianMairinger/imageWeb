@@ -18,6 +18,8 @@ Take files from `src/res/img` compress them (as *avif, webp, jpg & png* in *4K, 
  $ web-image src/res/img dist/res/img
 ```
 
+The same options as available to the API can be used. For a full list view `web-image --help`
+
 ### API
 
 ```ts
