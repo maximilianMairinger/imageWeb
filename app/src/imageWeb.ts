@@ -147,11 +147,13 @@ function constrFactorize(factor: number) {
 
 type Options = {
   silent?: boolean,
-  dynamicResolution?: boolean
+  dynamicResolution?: boolean,
+  override?: boolean
 }
 const defaultOptions: Options = {
   silent: true,
-  dynamicResolution: true
+  dynamicResolution: true,
+  override: true
 }
 
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
@@ -159,16 +161,19 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   const reses = normalizeResolution(resolutions)
   return function (input: string, outputDir: string, options: Options = {}) {
     return new Promise<void>(async (res) => {
-      options = merge(_options, options)
       input = slash(input)
       outputDir = slash(outputDir)
+      const inputIsFile = fss.lstatSync(input).isFile()
+      options = merge(_options, merge({override: isImage}, options))
+      
   
       if (!fss.existsSync(input)) throw new Error("Input cannot be found")
       mkDir(outputDir)
   
       let iii = input
       if (iii.endsWith("/")) iii = iii.slice(0, -1)
-      const slashCount = iii.split("/").length - (!fss.lstatSync(input).isDirectory() ? 1 : 0)
+      
+      const slashCount = iii.split("/").length - (inputIsFile ? 1 : 0)
   
   
       const progress = new SingleBar({}, cliProgress.Presets.legacy)
@@ -237,12 +242,14 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           logUpdate(`Found ${found++} files`)
           let fileName = formatFileName(name)
 
-          for (let res of reses) {
-            for (let format of formats) {
-              
-              const outFilename = pth.join(outputDir, toOutFilname(fileName, format, res.name)) 
-              if (fss.existsSync(outFilename)) {
-                alreadyDone.add(outFilename)
+          if (!options.override) {
+            for (let res of reses) {
+              for (let format of formats) {
+                
+                const outFilename = pth.join(outputDir, toOutFilname(fileName, format, res.name)) 
+                if (fss.existsSync(outFilename)) {
+                  alreadyDone.add(outFilename)
+                }
               }
             }
           }

@@ -14,6 +14,7 @@ program
 program
   .option('-s, --silent', 'silence stdout')
   .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
+  .option('-o, --override', 'override files when one with the same name is found')
   .option('-a, --algorithms <algorithms>', 'comma seperated list of image compression algorithms. Availible are "avif webp jpg tiff png"')
   .option('-r, --resolutions <resolutions>', 'comma seperated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
 .parse(process.argv)
@@ -48,6 +49,6 @@ else render = imageWeb
 
 render(input, output, {
   silent: program.silent !== undefined ? program.silent : false,
-  dynamicResolution: program.noDynamicResolution
+  dynamicResolution: program.noDynamicResolution,
+  override: program.override !== undefined ? program.override : false
 })
-
