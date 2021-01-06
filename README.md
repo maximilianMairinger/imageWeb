@@ -47,7 +47,7 @@ const imageWeb = constrImageWeb(["avif", "webp", "jpg"], [
   "FHD",  // Common resolution (explained below)
   508960, // Total pixels (width * height)
   { pixels: 508960, name: "littleMoreThanSD" }, // name is postfix for resolution (filename e.g. img@littleMoreThanSD.avif)
-  { width: 2000 } // interpolates with or height in 16:9 ratio to pixels
+  { width: 2000 } // interpolates width or height in 16:9 ratio to pixels
 ])
 
 imageWeb("src/res/img", "dist/res/img")
