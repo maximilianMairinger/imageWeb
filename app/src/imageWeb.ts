@@ -77,7 +77,7 @@ function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) =
           resQuick(r)
           return r
         })
-        Promise.all([proms, foundProm, ...promsDone, ...proms.Inner("done", [])]).then(([found]) => {
+        Promise.all([Promise.all(proms), foundProm, ...promsDone, ...proms.Inner("done", [])]).then(([found]) => {
           resDone([...founds, ...(found as any).flat()])
         })
       })
