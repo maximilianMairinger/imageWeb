@@ -3,8 +3,9 @@
 import * as path from "path"
 import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from "../imageWeb"
 import { program } from "commander"
-import config from "req-package-json"
+import reqPackageJson from "req-package-json"
 import findNextDirname from "./findNextDirname"
+const config = reqPackageJson()
 
 program
   .version(config.version)
