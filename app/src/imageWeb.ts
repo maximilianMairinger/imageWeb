@@ -10,6 +10,7 @@ const { promises: fs } = fss
 const { SingleBar } = cliProgress
 const mkDir = require("make-dir")
 const merge = require("deepmerge")
+import timoi from "timoi"
 
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
@@ -220,6 +221,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       
       find([input], "").done(async (todo) => {
         
+        let time = timoi()
         if (!options.silent) {
           console.log("Rendering...")
           progress.start(todo.length * reses.length * formats.length, 0)
@@ -234,7 +236,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   
         if (!options.silent) {
           progress.stop()
-          console.log("done")
+          console.log(`Done. Took ${time.str()}`)
         }
         res()
       })
