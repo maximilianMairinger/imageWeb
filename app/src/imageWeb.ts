@@ -142,106 +142,109 @@ const defaultOptions: Options = {
   dynamicResolution: true
 }
 
-export function constrWebImage(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
+export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
-  return async function (input: string, outputDir: string, options: Options = {}) {
-    options = merge(_options, options)
-    input = slash(input)
-    outputDir = slash(outputDir)
-
-    if (!fss.existsSync(input)) throw new Error("Input cannot be found")
-    mkDir(outputDir)
-
-    let iii = input
-    if (iii.endsWith("/")) iii = iii.slice(0, -1)
-    const slashCount = iii.split("/").length - (!fss.lstatSync(input).isDirectory() ? 1 : 0)
-
-
-    const progress = new SingleBar({}, cliProgress.Presets.legacy)
-
-    let done = 1
-    const render = async (path: string, fileName: string) => {
-      fileName = slash(fileName)
-      fileName = fileName.split("/").slice(slashCount).join("/")
-
-      const img = sharp(path) as ReturnType<typeof sharp> & {export: (format: string, name?: string) => Promise<void>}
-      
-      img.export = (format: string, name: string) => {
-        const exportName = `${fileName}@${name}.${format.toLowerCase()}`
-        const prom = img.toFile(pth.join(outputDir, `${exportName}`)) as any as Promise<void>
-        prom.then(() => {
-          progress.update(done++)
-        })
-        return prom
-      }
-
-      const meta = await img.metadata()
-      const hasPixels = meta.width * meta.height
-
-      const proms = []
-      for (let res of reses) {
-        const name = res.name
-        function render(format: string) {
-          return img.export(format, name)
+  return function (input: string, outputDir: string, options: Options = {}) {
+    return new Promise<void>(async (res) => {
+      options = merge(_options, options)
+      input = slash(input)
+      outputDir = slash(outputDir)
+  
+      if (!fss.existsSync(input)) throw new Error("Input cannot be found")
+      mkDir(outputDir)
+  
+      let iii = input
+      if (iii.endsWith("/")) iii = iii.slice(0, -1)
+      const slashCount = iii.split("/").length - (!fss.lstatSync(input).isDirectory() ? 1 : 0)
+  
+  
+      const progress = new SingleBar({}, cliProgress.Presets.legacy)
+  
+      let done = 1
+      const render = async (path: string, fileName: string) => {
+        fileName = slash(fileName)
+        fileName = fileName.split("/").slice(slashCount).join("/")
+  
+        const img = sharp(path) as ReturnType<typeof sharp> & {export: (format: string, name?: string) => Promise<void>}
+        
+        img.export = (format: string, name: string) => {
+          const exportName = `${fileName}@${name}.${format.toLowerCase()}`
+          const prom = img.toFile(pth.join(outputDir, `${exportName}`)) as any as Promise<void>
+          prom.then(() => {
+            progress.update(done++)
+          })
+          return prom
         }
-
-        if (hasPixels > res.pixels) {
-          for (let format of formats) {
-            const factorize = constrFactorize(Math.sqrt(hasPixels / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1))))
-            
-            img.resize({
-              width: factorize(meta.width),
-              height: factorize(meta.height)
-            })
-
-            proms.add(render(format))
+  
+        const meta = await img.metadata()
+        const hasPixels = meta.width * meta.height
+  
+        const proms = []
+        for (let res of reses) {
+          const name = res.name
+          function render(format: string) {
+            return img.export(format, name)
           }
+  
+          if (hasPixels > res.pixels) {
+            for (let format of formats) {
+              const factorize = constrFactorize(Math.sqrt(hasPixels / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1))))
+              
+              img.resize({
+                width: factorize(meta.width),
+                height: factorize(meta.height)
+              })
+  
+              proms.add(render(format))
+            }
+          }
+          else for (let format of formats) proms.add(render(format))
+  
+          await Promise.all(proms)
         }
-        else for (let format of formats) proms.add(render(format))
-
-        await Promise.all(proms)
       }
-    }
-
-
-    
-    let find: ReturnType<typeof constructGetImg>
-    if (!options.silent) {
-      console.log("Searching...")
-      logUpdate("Found 0 files")
-      let found = 1
-      find = constructGetImg(async () => {
-        logUpdate(`Found ${found++} files`)
-      })
-    }
-    else find = constructGetImg()
-    
-    find([input], "").done(async (todo) => {
+  
+  
       
+      let find: ReturnType<typeof constructGetImg>
       if (!options.silent) {
-        console.log("Rendering...")
-        progress.start(todo.length * reses.length * formats.length, 0)
+        console.log("Searching...")
+        logUpdate("Found 0 files")
+        let found = 1
+        find = constructGetImg(async () => {
+          logUpdate(`Found ${found++} files`)
+        })
       }
-
-      const proms = []
-      for (let e of todo) {
-        proms.add(render(e.path, e.fileName))
-      }
-
-      await Promise.all(proms)
-
-      if (!options.silent) {
-        progress.stop()
-        console.log("done")
-      }
+      else find = constructGetImg()
+      
+      find([input], "").done(async (todo) => {
+        
+        if (!options.silent) {
+          console.log("Rendering...")
+          progress.start(todo.length * reses.length * formats.length, 0)
+        }
+  
+        const proms = []
+        for (let e of todo) {
+          proms.add(render(e.path, e.fileName))
+        }
+  
+        await Promise.all(proms)
+  
+        if (!options.silent) {
+          progress.stop()
+          console.log("done")
+        }
+        res()
+      })
     })
   }
   
 }
 
 
-export const webImage = constrWebImage(["jpg", "webp", "png", "avif"], [
+export const imageweb = constrImageWeb(["jpg", "webp", "png", "avif"], [
   "4K",
   "3K",
   "FHD",
@@ -249,4 +252,4 @@ export const webImage = constrWebImage(["jpg", "webp", "png", "avif"], [
   "PREV"
 ])
 
-export default webImage
+export default imageweb
