@@ -5,7 +5,7 @@ import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from ".
 import { program } from "commander"
 import reqPackageJson from "req-package-json"
 import findNextDirname from "./findNextDirname"
-const config = reqPackageJson()
+const config = reqPackageJson(__dirname)
 
 program
   .version(config.version)
