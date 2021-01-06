@@ -12,6 +12,8 @@ const mkDir = require("make-dir")
 const merge = require("deepmerge")
 import timoi from "timoi"
 
+const unionResWithNameSymbol = "@"
+
 class QuickPromise<T> extends Promise<T> {
   constructor(call: (resQuick: Function, resDone: Function) => void) {
     super((res) => {
@@ -35,7 +37,7 @@ class QuickPromise<T> extends Promise<T> {
   }
 }
 
-function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) => void) {
+function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) => Promise<boolean | void> | boolean | void) {
   return function getImg(dirs: string[], sub: string) {
     return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone) => {
       const proms: QuickPromise<any>[] = []
@@ -52,8 +54,17 @@ function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) =
           else if (isImage(subDir)) {
             const fileName = removeExtension(subDir)
             const path = subDir
-            founds.add({path, fileName})
-            if (foundCb) promsDone.add(foundCb(path, fileName))
+            const didFind = {path, fileName}
+            founds.add(didFind)
+            if (foundCb) promsDone.add(new Promise<void>((res) => {
+              let r = foundCb(path, fileName)
+              if (r instanceof Promise) r.then(go as any)
+              else go(r as any)
+              function go(accept: boolean = true) {
+                if (!accept) founds.rmV(didFind)
+                res()
+              }
+            }))
           }
           
           
@@ -61,13 +72,13 @@ function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) =
       }
       
       Promise.all(totaloPromo).then(() => {
-        const quickDone = Promise.all(proms).then((found: any[]) => {
+        const foundProm = Promise.all(proms).then((found: any[]) => {
           const r = [...founds, ...(found as any).flat()]
           resQuick(r)
           return r
         })
-        Promise.all([quickDone, ...promsDone, ...proms.Inner("done", [])]).then((e) => {
-          resDone(e[0])
+        Promise.all([proms, foundProm, ...promsDone, ...proms.Inner("done", [])]).then(([found]) => {
+          resDone([...founds, ...(found as any).flat()])
         })
       })
     })
@@ -161,17 +172,25 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   
   
       const progress = new SingleBar({}, cliProgress.Presets.legacy)
+
+      function formatFileName(fileName: string) {
+        return slash(fileName).split("/").slice(slashCount).join("/")
+      }
+
+      function toOutFilname(fileName: string, format: string, res: string) {
+        return `${fileName}${unionResWithNameSymbol}${res}.${format.toLowerCase()}`
+      }
   
       let done = 1
       const render = async (path: string, fileName: string) => {
-        fileName = slash(fileName)
-        fileName = fileName.split("/").slice(slashCount).join("/")
+        fileName = formatFileName(fileName)
   
         const img = sharp(path) as ReturnType<typeof sharp> & {export: (format: string, name?: string) => Promise<void>}
         
         img.export = (format: string, name: string) => {
-          const exportName = `${fileName}@${name}.${format.toLowerCase()}`
-          const prom = img.toFile(pth.join(outputDir, `${exportName}`)) as any as Promise<void>
+          const outFilname = pth.join(outputDir, `${toOutFilname(fileName, format, name)}`)
+          if (alreadyDone.includes(outFilname)) return Promise.resolve()
+          const prom = img.toFile(outFilname) as any as Promise<void>
           prom.then(() => {
             progress.update(done++)
           })
@@ -209,26 +228,40 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   
       
       let find: ReturnType<typeof constructGetImg>
+      let alreadyDone = []
       if (!options.silent) {
         console.log("Searching...")
         logUpdate("Found 0 files")
         let found = 1
-        find = constructGetImg(async () => {
+        find = constructGetImg(async (find, name) => {
           logUpdate(`Found ${found++} files`)
+          let fileName = formatFileName(name)
+
+          for (let res of reses) {
+            for (let format of formats) {
+              
+              const outFilename = pth.join(outputDir, toOutFilname(fileName, format, res.name)) 
+              if (fss.existsSync(outFilename)) {
+                alreadyDone.add(outFilename)
+              }
+            }
+          }
         })
       }
       else find = constructGetImg()
       
-      find([input], "").done(async (todo) => {
+      find([input], "").done(async (files) => {
         
+        let todoCount = files.length * reses.length * formats.length - alreadyDone.length
+
         let time = timoi()
         if (!options.silent) {
-          console.log("Rendering...")
-          progress.start(todo.length * reses.length * formats.length, 0)
+          console.log("Rendering... When exiting prematurely, some output images may be corrupted.")
+          progress.start(todoCount, 0)
         }
   
         const proms = []
-        for (let e of todo) {
+        for (let e of files) {
           proms.add(render(e.path, e.fileName))
         }
   
