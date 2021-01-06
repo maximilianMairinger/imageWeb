@@ -15,17 +15,17 @@ Take files from `src/res/img` compress them (as *avif, webp, jpg & png* in *4K, 
 ### CLI
 
 ```shell
- $ web-image src/res/img dist/res/img
+ $ image-web src/res/img dist/res/img
 ```
 
-The same options as available to the API can be used. For a full list view `web-image --help`
+The same options as available to the API can be used. For a full list view `image-web --help`
 
 ### API
 
 ```ts
-import webImage from "web-image"
+import imageWeb from "web-image"
 
-webImage("src/res/img", "dist/res/img")
+imageWeb("src/res/img", "dist/res/img")
 ```
 
 #### Options
@@ -33,30 +33,32 @@ webImage("src/res/img", "dist/res/img")
 By default, the compression algorithms generally produce images at different visual fidelity (avif looks, despite being qualitative much better, worse than jpg at the same resolution). Web image tries to mitigate this issue by scaling up the resolution dynamically, depending on the algorithm used. You may disable this behaviour like this
 
 ```ts
-import webImage from "web-image"
+import imageWeb from "web-image"
 
-webImage("src/res/img", "dist/res/img", { silent: false, dynamicResolution: true })
+imageWeb("src/res/img", "dist/res/img", { silent: false, dynamicResolution: true })
 ```
 
 The default export is a basic configured instance. For custom configurations: 
 
 ```ts
-import { constrWebImage } from "web-image"
+import { constrImageWeb } from "web-image"
 
-const webImage = constrWebImage(["avif", "webp", "jpg"], [
+const imageWeb = constrImageWeb(["avif", "webp", "jpg"], [
   "FHD",  // Common resolution (explained below)
   508960, // Total pixels (width * height)
   { pixels: 508960, name: "littleMoreThanSD" }, // name is postfix for resolution (filename e.g. img@littleMoreThanSD.avif)
   { width: 2000 } // interpolates with or height in 16:9 ratio to pixels
 ])
+
+imageWeb("src/res/img", "dist/res/img")
 ```
 
 Options can be given here too. Those will be applied to all instance call, when not overwritten.
 
 ```ts
-import { constrWebImage } from "web-image"
+import { constrImageWeb } from "web-image"
 
-const webImage = constrWebImage(["avif", "jpg"], [
+const imageWeb = constrImageWeb(["avif", "jpg"], [
   "FHD"
 ], { silent: false, dynamicResolution: true })
 ```

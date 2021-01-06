@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as path from "path"
-import imageWeb, { imageResolutions, compressionOffset, constrWebImage } from "../imageWeb"
+import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from "../imageWeb"
 import { program } from "commander"
 import config from "req-package-json"
 import findNextDirname from "./findNextDirname"
@@ -41,7 +41,7 @@ if (program.algorithms || program.resolutions) {
     else throw new Error("Unknown resolution " + res)
   })
 
-  render = constrWebImage(algs, reses)
+  render = constrImageWeb(algs, reses)
 }
 else render = imageWeb
 

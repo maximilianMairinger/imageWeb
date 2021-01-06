@@ -1,4 +1,4 @@
-import webImage from "../../app/src/imageWeb"
+import imageWeb from "../../app/src/imageWeb"
 //const testElem = document.querySelector("#test")
 
-webImage("try", "test_out")
+imageWeb("try", "test_out")
