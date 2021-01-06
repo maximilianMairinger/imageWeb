@@ -47,7 +47,7 @@ if (program.algorithms || program.resolutions) {
 else render = imageWeb
 
 render(input, output, {
-  silent: program.silent,
+  silent: program.silent !== undefined ? program.silent : false,
   dynamicResolution: program.noDynamicResolution
 })
 

@@ -138,7 +138,7 @@ type Options = {
   dynamicResolution?: boolean
 }
 const defaultOptions: Options = {
-  silent: false,
+  silent: true,
   dynamicResolution: true
 }
 
