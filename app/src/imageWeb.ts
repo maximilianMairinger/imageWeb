@@ -267,12 +267,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           progress.start(todoCount, 0)
         }
   
-        const proms = []
+        
         for (let e of files) {
-          proms.add(render(e.path, e.fileName))
+          await render(e.path, e.fileName)
         }
-  
-        await Promise.all(proms)
   
         if (!options.silent) {
           progress.stop()
