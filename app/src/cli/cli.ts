@@ -18,7 +18,7 @@ program
   .option('-f, --force', 'force override files when one with the same name is found')
   .option('-a, --algorithms <algorithms>', 'comma seperated list of image compression algorithms. Availible are "avif webp jpg tiff png"')
   .option('-r, --resolutions <resolutions>', 'comma seperated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
-  .option('-t, --threads', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
+  .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
 .parse(process.argv)
 
 
@@ -56,7 +56,7 @@ const options = (() => {
   if (program.silent !== undefined) end.silent = program.silent
   if (program.noDynamicResolution !== undefined) end.dynamicResolution = !program.noDynamicResolution
   if (program.force !== undefined) end.force = program.force
-  if (program.threads !== undefined) end.threads = program.threads
+  if (program.threads !== undefined) end.threads = +program.threads
   
   return end
 })()

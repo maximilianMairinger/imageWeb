@@ -227,9 +227,8 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           function scheduleRender(format: string, prepImg?: () => (void | Promise<void>)) {
             const outFilename = pth.join(outputDir, `${toOutFilname(fileName, format, resName)}`)
             if (!alreadyDone.includes(outFilename)) {
-              // console.log("Schedule Rendering", outFilename)
               const f = async (id) => {
-                console.log(id, ">", pth.basename(outFilename))
+                // console.log(id, ">", pth.basename(outFilename))
                 if (prepImg) {
                   if (prepImg !== lastPrepImg) {
                     lastPrepImg = prepImg
@@ -238,13 +237,11 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                 }
                 
                 await exportImg(outFilename)
-                console.log(id, "<    ", pth.basename(outFilename))
+                // console.log(id, "<    ", pth.basename(outFilename))
               }
               f.outFilename = outFilename
               scheduledRenders.add(f as any)
             }
-            // else console.log("skipping Schedule Rendering", outFilename)
-
           }
 
 
@@ -349,8 +346,8 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           let i = 0
           let fileIndex = 0
 
-          const f = (id: number) => {
-            return new Promise<void>((res) => {
+          return (id: number) => {
+            return new Promise<void>((res, rej) => {
               if (list[i] === undefined) {
                 for (; (fileIndex < files.length) && (list[i] === undefined); ) {
                   const file = files[fileIndex]
@@ -362,39 +359,35 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                   }))
                 }
   
-                if (list[i] !== undefined) {
-                  list[i++](id).then(res)
-                }
-                else done()
+                if (list[i] !== undefined) list[i++](id).then(res)
+                else rej()
               }
               else {
                 list[i++](id).then(res)
               }
             })
           }
-          let done: Function
-          f.done = new Promise((res) => {done = res})
-          return f
         })()
 
 
         let done = 1
         const startThread = (async (id: number) => {
-          await render(id)
-          if (!options.silent) progress.update(done++)
-
-          
-          startThread(id)
+          let failed = false
+          try {await render(id)}
+          catch(e) {failed = true}
+          if (!failed) {
+            if (!options.silent) progress.update(done++)
+            await startThread(id)
+          }
         })
 
+        const threadsList = []
         for (let i = 0; i < options.threads; i++) {
-          startThread(i)
+          threadsList.add(startThread(i))
         }
 
+        await Promise.all(threadsList)
 
-       
-        await render.done
-        
         if (!options.silent) {
           progress.stop()
           console.log(`Done. Took ${time.str()}`)
