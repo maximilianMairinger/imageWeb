@@ -11,6 +11,8 @@ const { SingleBar } = cliProgress
 const mkDir = require("make-dir")
 const merge = require("deepmerge")
 import timoi from "timoi"
+import * as os from "os"
+import * as del from "del"
 
 const unionResWithNameSymbol = "@"
 
@@ -148,12 +150,20 @@ function constrFactorize(factor: number) {
 type Options = {
   silent?: boolean,
   dynamicResolution?: boolean,
-  override?: boolean
+  force?: boolean,
+  threads?: number
 }
+
+let _______threads = 1
+try {
+  _______threads = os.cpus().length
+}
+catch(e) {}
 const defaultOptions: Options = {
   silent: true,
   dynamicResolution: true,
-  override: true
+  force: false,
+  threads: _______threads
 }
 
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
@@ -164,8 +174,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       input = slash(input)
       outputDir = slash(outputDir)
       const inputIsFile = fss.lstatSync(input).isFile()
-      options = merge(_options, merge({override: isImage}, options))
-      
+      options = merge(_options, options)
   
       if (!fss.existsSync(input)) throw new Error("Input cannot be found")
       mkDir(outputDir)
@@ -185,93 +194,207 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       function toOutFilname(fileName: string, format: string, res: string) {
         return `${fileName}${unionResWithNameSymbol}${res}.${format.toLowerCase()}`
       }
+
+
+
+      
   
-      let done = 1
-      const render = async (path: string, fileName: string) => {
+      const scheduleRenders = (path: string, fileName: string) => {
         fileName = formatFileName(fileName)
   
-        const img = sharp(path) as ReturnType<typeof sharp> & {export: (format: string, name?: string) => Promise<void>}
+        const img = sharp(path)
+
+        let lastPrepImg: any
+
         
-        img.export = (format: string, name: string) => {
-          const outFilname = pth.join(outputDir, `${toOutFilname(fileName, format, name)}`)
-          if (alreadyDone.includes(outFilname)) return Promise.resolve()
-          const prom = img.toFile(outFilname) as any as Promise<void>
-          prom.then(() => {
-            progress.update(done++)
-          })
-          return prom
+        
+        const exportImg = (outFilename: string) => {
+          return img.toFile(outFilename) as any as Promise<void>
         }
+        
   
-        const meta = await img.metadata()
-        const hasPixels = meta.width * meta.height
+        const meta = img.metadata()
+        const hasPixels = meta.then((meta) => meta.width * meta.height)
   
-        const proms = []
+        const scheduledRenders: { (): Promise<void>, outFilename: string }[] = []
         for (let res of reses) {
-          const name = res.name
-          function render(format: string) {
-            return img.export(format, name)
-          }
-  
-          if (hasPixels > res.pixels) {
-            for (let format of formats) {
-              const factorize = constrFactorize(Math.sqrt(hasPixels / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1))))
-              
-              img.resize({
-                width: factorize(meta.width),
-                height: factorize(meta.height)
-              })
-  
-              proms.add(render(format))
+          
+          const { name: resName } = res
+
+          
+
+
+          function scheduleRender(format: string, prepImg?: () => (void | Promise<void>)) {
+            const outFilename = pth.join(outputDir, `${toOutFilname(fileName, format, resName)}`)
+            if (!alreadyDone.includes(outFilename)) {
+              // console.log("Schedule Rendering", outFilename)
+              const f = async (id) => {
+                console.log(id, ">", pth.basename(outFilename))
+                if (prepImg) {
+                  if (prepImg !== lastPrepImg) {
+                    lastPrepImg = prepImg
+                    await prepImg()
+                  }
+                }
+                
+                await exportImg(outFilename)
+                console.log(id, "<    ", pth.basename(outFilename))
+              }
+              f.outFilename = outFilename
+              scheduledRenders.add(f as any)
             }
+            // else console.log("skipping Schedule Rendering", outFilename)
+
           }
-          else for (let format of formats) proms.add(render(format))
-  
-          await Promise.all(proms)
+
+
+
+          const srcIsBiggerThanWanted = hasPixels.then((hasPixels) => hasPixels > res.pixels)
+
+          const basicPrepImg = async () => {
+            img.resize({
+              width: (await meta).width,
+              height: (await meta).height
+            })
+          }
+
+          for (let format of formats) {
+            scheduleRender(format, async () => {
+          
+              if (await srcIsBiggerThanWanted) {
+                const factorize = constrFactorize(Math.sqrt((await hasPixels) / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1))))
+
+                img.resize({
+                  width: factorize((await meta).width),
+                  height: factorize((await meta).height)
+                })
+              }
+              else {
+                scheduleRender(format, basicPrepImg)
+              }
+            })
+          }        
         }
+        return scheduledRenders
       }
   
   
+      const queryAlreadyExsistingFiles = (name: string) => {
+        let fileName = formatFileName(name)
+
+        if (!options.force) {
+          for (let res of reses) {
+            for (let format of formats) {
+              
+              const outFilename = pth.join(outputDir, toOutFilname(fileName, format, res.name)) 
+              if (fss.existsSync(outFilename)) {
+                alreadyDone.add(outFilename)
+              }
+            }
+          }
+        }
+      }
       
       let find: ReturnType<typeof constructGetImg>
       let alreadyDone = []
       if (!options.silent) {
         console.log("Searching...")
-        logUpdate("Found 0 files")
-        let found = 1
-        find = constructGetImg(async (find, name) => {
+        let found = 0
+        logUpdate(`Found ${found++} files`)
+        find = constructGetImg(!options.force ? (find, name) => {
           logUpdate(`Found ${found++} files`)
-          let fileName = formatFileName(name)
-
-          if (!options.override) {
-            for (let res of reses) {
-              for (let format of formats) {
-                
-                const outFilename = pth.join(outputDir, toOutFilname(fileName, format, res.name)) 
-                if (fss.existsSync(outFilename)) {
-                  alreadyDone.add(outFilename)
-                }
-              }
-            }
-          }
+          queryAlreadyExsistingFiles(name)
+        } : () => {
+          logUpdate(`Found ${found++} files`)
         })
       }
-      else find = constructGetImg()
+      else find = constructGetImg(!options.force ? (find, name) => {
+        queryAlreadyExsistingFiles(name)
+      } : undefined)
       
-      find([input], "").done(async (files) => {
-        
+      find([input], "").done(async (files: {path: string, fileName: string}[]) => {
         let todoCount = files.length * reses.length * formats.length - alreadyDone.length
+        
+        console.log("Rendering on " + options.threads + " threads.")
+        let startedOrderFilenames = []
+        let exitTryCount = 0
+        // process.on('SIGINT', async () => {
+        //   const maybeCorruptedCount = (files.length - startedOrderFilenames.length) > options.threads ? files.length - startedOrderFilenames.length : options.threads
+        //   if (exitTryCount === 0) {
+        //     exitTryCount++
+        //     console.log(`Exiting... Removing ${maybeCorruptedCount} corrupted files first...`)
+        //     const maybeCorruptedFilenames = startedOrderFilenames.slice(startedOrderFilenames.length - maybeCorruptedCount)
+        //     setTimeout(() => {
+        //       console.log(`This is taking unexpectedly long... Interrupt again to cancel`)
+        //     }, 500)
+            
+        //     await del(maybeCorruptedFilenames)
+        //     console.log("Done cleaning up. Now exiting!")
+        //     process.exit(130)
+        //   }
+        //   else {
+        //     console.log(`Exiting prematurely. The last ${maybeCorruptedCount} could be corrupted. Now exiting!`)
+        //     process.exit(130)
+        //   }
+        // });
 
         let time = timoi()
         if (!options.silent) {
-          console.log("Rendering... When exiting prematurely, some output images may be corrupted.")
           progress.start(todoCount, 0)
         }
   
-        
-        for (let e of files) {
-          await render(e.path, e.fileName)
-        }
+
+        const render = (() => {
+          const list = []
+          let i = 0
+          let fileIndex = 0
+
+          const f = (id: number) => {
+            return new Promise<void>((res) => {
+              if (list[i] === undefined) {
+                for (; (fileIndex < files.length) && (list[i] === undefined); ) {
+                  const file = files[fileIndex]
+                  fileIndex++
+                  list.add(...scheduleRenders(file.path, file.fileName).map((render) => (...a) => {
+                    startedOrderFilenames.add(render.outFilename)
+                    //@ts-ignore
+                    return render(...a)
+                  }))
+                }
   
+                if (list[i] !== undefined) {
+                  list[i++](id).then(res)
+                }
+                else done()
+              }
+              else {
+                list[i++](id).then(res)
+              }
+            })
+          }
+          let done: Function
+          f.done = new Promise((res) => {done = res})
+          return f
+        })()
+
+
+        let done = 1
+        const startThread = (async (id: number) => {
+          await render(id)
+          if (!options.silent) progress.update(done++)
+
+          
+          startThread(id)
+        })
+
+        for (let i = 0; i < options.threads; i++) {
+          startThread(i)
+        }
+
+
+       
+        await render.done
+        
         if (!options.silent) {
           progress.stop()
           console.log(`Done. Took ${time.str()}`)
