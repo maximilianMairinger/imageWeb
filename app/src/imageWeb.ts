@@ -314,7 +314,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       find([input], "").done(async (files: {path: string, fileName: string}[]) => {
         let todoCount = files.length * reses.length * formats.length - alreadyDone.length
         
-        console.log("Rendering on " + options.threads + " threads.")
+        if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
         let startedOrderFilenames = []
         let exitTryCount = 0
         // process.on('SIGINT', async () => {
