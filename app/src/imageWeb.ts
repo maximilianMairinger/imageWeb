@@ -151,7 +151,8 @@ type Options = {
   silent?: boolean,
   dynamicResolution?: boolean,
   force?: boolean,
-  threads?: number
+  threads?: number,
+  debug?: boolean
 }
 
 let _______threads = 1
@@ -163,7 +164,8 @@ const defaultOptions: Options = {
   silent: true,
   dynamicResolution: true,
   force: false,
-  threads: _______threads
+  threads: _______threads,
+  debug: false
 }
 
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
@@ -228,7 +230,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
             const outFilename = pth.join(outputDir, `${toOutFilname(fileName, format, resName)}`)
             if (!alreadyDone.includes(outFilename)) {
               const f = async (id) => {
-                // console.log(id, ">", pth.basename(outFilename))
+                if (options.debug) console.log(id, ">", pth.basename(outFilename))
                 if (prepImg) {
                   if (prepImg !== lastPrepImg) {
                     lastPrepImg = prepImg
@@ -237,7 +239,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                 }
                 
                 await exportImg(outFilename)
-                // console.log(id, "<    ", pth.basename(outFilename))
+                if (options.debug) console.log(id, "<    ", pth.basename(outFilename))
               }
               f.outFilename = outFilename
               scheduledRenders.add(f as any)

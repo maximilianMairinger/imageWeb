@@ -19,6 +19,7 @@ program
   .option('-a, --algorithms <algorithms>', 'comma seperated list of image compression algorithms. Availible are "avif webp jpg tiff png"')
   .option('-r, --resolutions <resolutions>', 'comma seperated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
+  .option('-d', '--debug', 'Enable debug logging. Defaults to false.')
 .parse(process.argv)
 
 
@@ -57,6 +58,7 @@ const options = (() => {
   if (program.noDynamicResolution !== undefined) end.dynamicResolution = !program.noDynamicResolution
   if (program.force !== undefined) end.force = program.force
   if (program.threads !== undefined) end.threads = +program.threads
+  if (program.debug !== undefined) end.debug = program.debug
   
   return end
 })()
