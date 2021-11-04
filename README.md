@@ -1,6 +1,6 @@
 # Web image
 
-Image optimisation and compression for the web. Bulk resize and compress them for dynamic resource deployment. Intended for preload images, thumbnails, client dependent compression algorithms (avif for browsers that support it), end device dependent resolution (4K screen => 4K image)
+Image optimization and compression for the web. Bulk resize and compress them for dynamic resource deployment. Intended for preload images, thumbnails, client dependent compression algorithms (avif for browsers that support it), end device dependent resolution (4K screen => 4K image)
 
 ## Installation
 
@@ -30,12 +30,12 @@ imageWeb("src/res/img", "dist/res/img")
 
 #### Options
 
-By default, the compression algorithms generally produce images at different visual fidelity (avif looks, despite being qualitative much better, worse than jpg at the same resolution). Web image tries to mitigate this issue by scaling up the resolution dynamically, depending on the algorithm used. You may disable this behaviour like this
+By default, the compression algorithms generally produce images at different visual fidelity (avif looks, despite being much better, worse than jpg at the same resolution). Web image tries to mitigate this issue by scaling up the resolution dynamically, depending on the algorithm used. You may disable this behavior like this
 
 ```ts
 import imageWeb from "web-image"
 
-imageWeb("src/res/img", "dist/res/img", { silent: false, dynamicResolution: true })
+imageWeb("src/res/img", "dist/res/img", { silent: false, dynamicResolution: false })
 ```
 
 The default export is a basic configured instance. For custom configurations: 
@@ -46,14 +46,14 @@ import { constrImageWeb } from "web-image"
 const imageWeb = constrImageWeb(["avif", "webp", "jpg"], [
   "FHD",  // Common resolution (explained below)
   508960, // Total pixels (width * height)
-  { pixels: 508960, name: "littleMoreThanSD" }, // name is postfix for resolution (filename e.g. img@littleMoreThanSD.avif)
+  { pixels: 508960, name: "littleMoreThanSD" }, // name is used as suffix replacing the resolution (filename e.g. img@littleMoreThanSD.avif)
   { width: 2000 } // interpolates width or height in 16:9 ratio to pixels
 ])
 
 imageWeb("src/res/img", "dist/res/img")
 ```
 
-Options can be given here too. Those will be applied to all instance call, when not overwritten.
+Options can be given here too. Those will be applied to all instance calls, when not overwritten.
 
 ```ts
 import { constrImageWeb } from "web-image"
