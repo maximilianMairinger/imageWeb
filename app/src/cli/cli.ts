@@ -43,6 +43,7 @@ if (program.algorithms || program.resolutions) {
   reses = reses.map(res => {
     if (!isNaN(+res)) return +res
     else if (commonResolutions.includes(res)) return res
+    else if (res.endsWith("p") && !isNaN(+res.substring(0, res.length-1))) return res
     else throw new Error("Unknown resolution " + res)
   })
 
