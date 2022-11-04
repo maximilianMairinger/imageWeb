@@ -5,7 +5,7 @@ Image optimization and compression for the web. Bulk resize and compress them fo
 ## Installation
 
 ```shell
- $ npm i web-image -g && npm i web-image
+ $ npx image-web --help
 ```
 
 ## Usage
