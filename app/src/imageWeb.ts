@@ -106,14 +106,36 @@ type ImageFormats = keyof typeof compressionOffset
 
 type Pixels = number
 export const imageResolutions = {
-  "4K": 8294400, // 2160p
-  "3K": 3686400, // 1440p
-  "FHD": 2073600, // 1080p
-  "HD": 921600, // 720p
-  "SD": 408960, // 480p
-  "TINY": 36864, // 144p
-  "PREV": 400 // 15p
+  "2UHD": 7680 * 4320, // 4320p
+  "UHD": 3840 * 2160, // 2160p
+  "QHD": 2560 * 1440, // 1440p
+  "FHD": 1920 * 1080, // 1080p
+  "HD": 1280 * 720, // 720p
+  "SD": 640 * 480, // 480p
+  "LD": 320 * 240, // 240p
+  "TINY": 256 * 144, // 144p
+  "PREV": 25 * 15 // 15p 
+} as {
+  "2UHD": Pixels,
+  "8K": Pixels,
+  "UHD": Pixels,
+  "4K": Pixels,
+  "QHD": Pixels,
+  "3K": Pixels,
+  "2K": Pixels,
+  "FHD": Pixels,
+  "HD": Pixels,
+  "SD": Pixels,
+  "LD": Pixels,
+  "TINY": Pixels,
+  "PREV": Pixels,
 }
+
+imageResolutions["8K"] = imageResolutions["2UHD"]
+imageResolutions["4K"] = imageResolutions["UHD"]
+imageResolutions["3K"] = imageResolutions["QHD"] // this is the same as 2K for legacy reasons
+imageResolutions["2K"] = imageResolutions["QHD"]
+
 
 type ImageResolutions = keyof typeof imageResolutions
 type WidthHeight = {width?: number, height: number, name?: string} | {width: number, height?: number, name?: string}
@@ -122,7 +144,13 @@ const heightToWidthFactor = 16 / 9
 
 function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[]) {
   return resolutions.map((res) => {
-    if (typeof res === "string") res = {pixels: imageResolutions[res.toUpperCase()], name: res}
+    if (typeof res === "string") {
+      if (res.endsWith("p")) {
+        const height = +res.substring(0, res.length - 1)
+        if (!isNaN(height)) return {pixels: height * heightToWidthFactor * height, name: res}
+      }
+      res = {pixels: imageResolutions[res.toUpperCase()], name: res}
+    }
     else if (typeof res === "number") res = {pixels: res, name: res.toString()}
     else {
       let pixels: number
