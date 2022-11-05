@@ -18,7 +18,18 @@ Take files from `src/res/img` compress them (as *avif, webp, jpg & png* in *4K, 
  $ image-web src/res/img dist/res/img
 ```
 
-The same options as available to the API can be used. For a full list view `image-web --help`
+The options are analog the the ones available to the API. Please view `image-web --help` for a comprehensive list. Here an example with options:
+
+```shell
+ $ image-web src/res/img dist/res/img --algorithm avif,webp --resolution 4K,2K,PREV
+ $ image-web src/res/img dist/res/img -a avif,webp -r 2160p,1080p,15p
+```
+
+Another example: Sanitize/recodec a single image (4K resolution, codec infered by output file type):
+
+```shell
+ $ image-web src/res/img/image-name.png dist/res/img/image-name.webp
+```
 
 ### API
 
@@ -72,14 +83,16 @@ avif, webp, jpg, tiff & png are supported by the underling library [sharp](https
 Translation table for common resolutions to total pixels (width * height)
 
 ```ts
-const imageResolutions = {
-  "4K": 8294400,   // 2160p
-  "3K": 3686400,   // 1440p
-  "FHD": 2073600,  // 1080p
-  "HD": 921600,    // 720p
-  "SD": 408960,    // 480p
-  "TINY": 36864,   // 144p
-  "PREV": 400      // 15p
+export const imageResolutions = {
+  "2UHD": 7680 * 4320, // 4320p
+  "UHD": 3840 * 2160, // 2160p
+  "QHD": 2560 * 1440, // 1440p
+  "FHD": 1920 * 1080, // 1080p
+  "HD": 1280 * 720, // 720p
+  "SD": 640 * 480, // 480p
+  "LD": 320 * 240, // 240p
+  "TINY": 256 * 144, // 144p
+  "PREV": 25 * 15 // 15p 
 }
 ```
 
