@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as path from "path"
-import imageWeb, { imageResolutions, compressionOffset, constrImageWeb, OutputIsFileError } from "../imageWeb"
+import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from "../imageWeb"
 import { program } from "commander"
 import reqPackageJson from "req-package-json"
 import findNextDirname from "./findNextDirname"
@@ -75,8 +75,11 @@ else {
   (() => {
 
     if (fs.existsSync(input) && fs.lstatSync(input).isDirectory()) return
-    if (fs.existsSync(output) && !fs.lstatSync(output).isDirectory()) {
-      if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
+    if (fs.existsSync(output)) {
+      if (!fs.lstatSync(output).isDirectory()) {
+        if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
+      }
+      else return
     }
     let outputCodec: any
     let inputCodec: any
@@ -90,7 +93,6 @@ else {
   })()
 
   if (hasSpesificOutputWish) {
-    output = path.join(output, "..")
     render = constrImageWeb([hasSpesificOutputWish.alg], [hasSpesificOutputWish.res])
   }
   else {
@@ -101,6 +103,7 @@ else {
 
 
 
+console.log(`Running version: v${config.version}`)
 
 render(input, output, merge({
   silent: false

@@ -137,6 +137,9 @@ imageResolutions["3K"] = imageResolutions["QHD"] // this is the same as 2K for l
 imageResolutions["2K"] = imageResolutions["QHD"]
 
 
+const commonAlgorithem = Object.keys(compressionOffset)
+
+
 type ImageResolutions = keyof typeof imageResolutions
 type WidthHeight = {width?: number, height: number, name?: string} | {width: number, height?: number, name?: string}
 
@@ -200,11 +203,6 @@ const defaultOptions: Options = {
   debug: false
 }
 
-export class OutputIsFileError extends Error {
-  constructor() {
-    super("Output location is a file")
-  }
-}
 
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
@@ -217,8 +215,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       options = merge(_options, options)
   
       if (!fss.existsSync(input)) throw new Error("Input cannot be found")
-      if (!fss.existsSync(outputDir) && !fss.lstatSync(input).isDirectory()) throw new OutputIsFileError()
-      mkDir(outputDir)
+
   
       let iii = input
       if (iii.endsWith("/")) iii = iii.slice(0, -1)
@@ -232,7 +229,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         return slash(fileName).split("/").slice(slashCount).join("/")
       }
 
-      function toOutFilname(fileName: string, format: string, res: string) {
+      let toOutFilname = (fileName: string, format: string, res: string) => {
         return `${fileName}${res !== "" ? (unionResWithNameSymbol + res) : ""}.${format.toLowerCase()}`
       }
 
@@ -361,7 +358,53 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       } : undefined)
       
       find([input], "").done(async (files: {path: string, fileName: string}[]) => {
-        let todoCount = files.length * reses.length * formats.length - alreadyDone.length
+        const totalNumberOfFilesPending = files.length * reses.length * formats.length
+        if (totalNumberOfFilesPending === 1) {
+          let hasSpesificOutputWish: any
+          (() => {
+            if (fss.existsSync(input) && fss.lstatSync(input).isDirectory()) return
+            if (fss.existsSync(outputDir)) {
+              if (!fss.lstatSync(outputDir).isDirectory()) {
+                if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
+              }
+              else return
+            }
+            let outputCodec: any
+            let inputCodec: any
+
+            for (const codec of commonAlgorithem) {
+              if (outputDir.endsWith("." + codec)) outputCodec = codec
+              if (input.endsWith("." + codec)) inputCodec = codec
+            }
+            if (inputCodec && outputCodec) {
+              hasSpesificOutputWish = { alg: outputCodec, res: {pixels: imageResolutions.UHD, name: ""} }
+            }
+          })()
+      
+          if (hasSpesificOutputWish) {
+            const output = outputDir
+            const fileName = pth.basename(outputDir)
+            outputDir = pth.join(outputDir, "..")
+            toOutFilname = (f, format, resName) => fileName
+            alreadyDone = []
+            if (fss.existsSync(output)) {
+              if (fss.lstatSync(output).isDirectory()) throw new Error("Output points to a existing directory. Terminating here, before any changes.")
+              else if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
+              else await fs.unlink(output)
+            }
+          }
+          
+        }
+        else if (fss.existsSync(outputDir) && !fss.lstatSync(outputDir).isDirectory()) throw new Error("Output points to an existing file. Expected a directory here. Terminating here, before any changes.")
+
+        mkDir(outputDir)
+
+       
+
+
+
+
+        let todoCount = totalNumberOfFilesPending - alreadyDone.length
         
         if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
         let startedOrderFilenames = []
