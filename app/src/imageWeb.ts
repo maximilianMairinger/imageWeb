@@ -12,7 +12,7 @@ const mkDir = require("make-dir")
 const merge = require("deepmerge")
 import timoi from "timoi"
 import * as os from "os"
-import { deleteAsync as del } from "del"
+
 
 const unionResWithNameSymbol = "@"
 
@@ -255,7 +255,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
               // this is only a secondary check, such a file shouldnt be in the todo queue anyway as they get filtered out by queryAlreadyExsistingFiles before
               if (!options.force) throw new Error("Output file already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
               // delete file
-              else await del(outFilename)
+              else await fs.unlink(outFilename)
             }
             else throw new Error("Output filename already exists and is a dir! This should'nt happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
           }
