@@ -68,7 +68,7 @@
     "cli-progress": "^3.8.2",
     "commander": "^6.2.1",
     "deepmerge": "^4.2.2",
-    "del": "^5.1.0",
+    "del": "^7.0.0",
     "fast-linked-list": "^1.0.1",
     "is-image": "^3.0.0",
     "josm": "^1.3.6",

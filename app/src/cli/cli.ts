@@ -76,7 +76,7 @@ else {
 
     if (fs.existsSync(input) && fs.lstatSync(input).isDirectory()) return
     if (fs.existsSync(output) && !fs.lstatSync(output).isDirectory()) {
-      if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here.")
+      if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
     }
     let outputCodec: any
     let inputCodec: any
