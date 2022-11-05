@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import * as path from "path"
-import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from "../imageWeb"
+import imageWeb, { imageResolutions, compressionOffset, constrImageWeb, OutputIsFileError } from "../imageWeb"
 import { program } from "commander"
 import reqPackageJson from "req-package-json"
 import findNextDirname from "./findNextDirname"
+import * as fs from "fs"
 const merge = require("deepmerge")
 const config = reqPackageJson(__dirname)
 
@@ -21,6 +22,25 @@ program
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
   .option('-d', '--debug', 'Enable debug logging. Defaults to false.')
 .parse(process.argv)
+
+
+
+const options = (() => {
+  const end: any = {}
+  if (program.silent !== undefined) end.silent = program.silent
+  if (program.noDynamicResolution !== undefined) end.dynamicResolution = !program.noDynamicResolution
+  if (program.force !== undefined) end.force = program.force
+  if (program.threads !== undefined) end.threads = +program.threads
+  if (program.debug !== undefined) end.debug = program.debug
+  
+  return end
+})() as {
+  silent?: boolean,
+  dynamicResolution?: boolean,
+  force?: boolean,
+  threads?: number,
+  debug?: boolean
+}
 
 
 const commonResolutions = Object.keys(imageResolutions)
@@ -49,20 +69,39 @@ if (program.algorithms || program.resolutions) {
 
   render = constrImageWeb(algs, reses)
 }
-else render = imageWeb
+else {
+  let hasSpesificOutputWish: { alg: any, res: { pixels: number, name: string } }
+
+  (() => {
+
+    if (fs.existsSync(input) && fs.lstatSync(input).isDirectory()) return
+    if (fs.existsSync(output) && !fs.lstatSync(output).isDirectory()) {
+      if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here.")
+    }
+    let outputCodec: any
+    let inputCodec: any
+    for (const codec of commonAlgorithem) {
+      if (output.endsWith("." + codec)) outputCodec = codec
+      if (input.endsWith("." + codec)) inputCodec = codec
+    }
+    if (inputCodec && outputCodec) {
+      hasSpesificOutputWish = { alg: outputCodec, res: {pixels: imageResolutions.UHD, name: ""} }
+    }
+  })()
+
+  if (hasSpesificOutputWish) {
+    output = path.join(output, "..")
+    render = constrImageWeb([hasSpesificOutputWish.alg], [hasSpesificOutputWish.res])
+  }
+  else {
+    render = imageWeb
+  }
+}
 
 
 
-const options = (() => {
-  const end: any = {}
-  if (program.silent !== undefined) end.silent = program.silent
-  if (program.noDynamicResolution !== undefined) end.dynamicResolution = !program.noDynamicResolution
-  if (program.force !== undefined) end.force = program.force
-  if (program.threads !== undefined) end.threads = +program.threads
-  if (program.debug !== undefined) end.debug = program.debug
-  
-  return end
-})()
+
+
 render(input, output, merge({
   silent: false
 }, options))

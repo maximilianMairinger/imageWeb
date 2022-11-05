@@ -149,10 +149,14 @@ function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: 
         const height = +res.substring(0, res.length - 1)
         if (!isNaN(height)) return {pixels: height * heightToWidthFactor * height, name: res}
       }
-      res = {pixels: imageResolutions[res.toUpperCase()], name: res}
+      const pixels = imageResolutions[res.toUpperCase()]
+      if (pixels === undefined) throw new Error(`Invalid resolution: ${res}`)
+      res = {pixels, name: res}
     }
     else if (typeof res === "number") res = {pixels: res, name: res.toString()}
     else {
+      const initiallyHeightWasGiven = (res as any).height !== undefined
+      const initiallyWidthWasGiven = (res as any).width !== undefined
       let pixels: number
       if ((res as any).pixels !== undefined) pixels = (res as any).pixels
       else {
@@ -160,8 +164,8 @@ function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: 
         else if ((res as any).height === undefined) (res as any).height = (res as any).width / heightToWidthFactor
         pixels = (res as any).height * (res as any).width
       }
-      
-      res = {name: res.name !== undefined ? res.name : pixels.toString(), pixels}
+
+      res = {name: res.name !== undefined ? res.name : initiallyHeightWasGiven ? (res as any).height + "p" : initiallyWidthWasGiven ? (res as any).width + "w" : pixels.toString(), pixels}
     }
 
     return res
@@ -196,6 +200,12 @@ const defaultOptions: Options = {
   debug: false
 }
 
+export class OutputIsFileError extends Error {
+  constructor() {
+    super("Output location is a file")
+  }
+}
+
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
@@ -207,6 +217,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       options = merge(_options, options)
   
       if (!fss.existsSync(input)) throw new Error("Input cannot be found")
+      if (!fss.existsSync(outputDir) && !fss.lstatSync(input).isDirectory()) throw new OutputIsFileError()
       mkDir(outputDir)
   
       let iii = input
@@ -222,7 +233,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       }
 
       function toOutFilname(fileName: string, format: string, res: string) {
-        return `${fileName}${unionResWithNameSymbol}${res}.${format.toLowerCase()}`
+        return `${fileName}${res !== "" ? (unionResWithNameSymbol + res) : ""}.${format.toLowerCase()}`
       }
 
 
@@ -251,11 +262,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           
           const { name: resName } = res
 
-          
 
 
           function scheduleRender(format: string, prepImg?: () => (void | Promise<void>)) {
-            const outFilename = pth.join(outputDir, `${toOutFilname(fileName, format, resName)}`)
+            const outFilename = pth.join(outputDir, toOutFilname(fileName, format, resName))
             if (!alreadyDone.includes(outFilename)) {
               const f = async (id) => {
                 if (options.debug) console.log(id, ">", pth.basename(outFilename))
