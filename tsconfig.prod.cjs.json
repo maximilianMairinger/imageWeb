@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "./app/dist/cjs",
     "module": "CommonJS",
-    "target": "esnext",
+    "target": "es2019",
     "allowSyntheticDefaultImports": true,
     "declaration": false,
     "skipLibCheck": true
