@@ -22,7 +22,7 @@
     "devWeb": "rollup --config rollup.web.dev.config.js -w",
     "devNode": "rollup --config rollup.node.dev.config.js -w",
     "deploy": "npm run build && npm publish",
-    "repl": "del-cli ./test_out/** && node ./repl/dist/imageWeb-repl.js",
+    "repl": "node --trace-warnings ./repl/dist/imageWeb-repl.js",
     "start": "npm run repl",
     "buildTest": "rollup --config rollup.node.test.config.js",
     "test": "npm run buildTest && jest"
@@ -68,6 +68,7 @@
     "cli-progress": "^3.8.2",
     "commander": "^6.2.1",
     "deepmerge": "^4.2.2",
+    "fast-linked-list": "^3.1.1",
     "is-image": "^3.0.0",
     "josm": "^1.3.6",
     "key-index": "^1.4.9",
@@ -77,6 +78,7 @@
     "sharp": "^0.27.0",
     "slash": "^3.0.0",
     "timoi": "^1.1.1",
+    "tiny-delay": "^1.0.5",
     "xrray": "^4.7.6"
   }
 }

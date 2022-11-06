@@ -51,26 +51,29 @@ input = path.resolve("", input ? input : "")
 output = path.resolve("", output ? output : path.join(config.name + "_output", findNextDirname(input)))
 
 let render: typeof imageWeb
-if (program.algorithms || program.resolutions) {
-  let algs = program.algorithms.split(",")
-  let reses = program.resolutions.split(",")
 
-  algs = algs.map(alg => {
-    if (commonAlgorithem.includes(alg)) return alg
-    else throw new Error("Unknown algorithm " + alg)
-  })
 
-  reses = reses.map(res => {
-    if (!isNaN(+res)) return +res
-    else if (commonResolutions.includes(res)) return res
-    else if (res.endsWith("p") && !isNaN(+res.substring(0, res.length-1))) return res
-    else throw new Error("Unknown resolution " + res)
-  })
 
-  render = constrImageWeb(algs, reses)
+
+const alg = !program.algorithms ? undefined : program.algorithms.split(",").map(alg => {
+  if (commonAlgorithem.includes(alg)) return alg
+  else throw new Error("Unknown algorithm " + alg)
+}) as ("png" | "webp" | "jpg" | "tiff" | "avif")[]
+
+const res = !program.resolutions ? undefined : program.resolutions.split(",").map(res => {
+  if (!isNaN(+res)) return +res
+  else if (commonResolutions.includes(res)) return res
+  else if (res.endsWith("p") && !isNaN(+res.substring(0, res.length-1))) return res
+  else throw new Error("Unknown resolution " + res)
+}) as any
+
+
+
+if (alg && res) {
+  render = constrImageWeb(alg, res)
 }
 else {
-  let hasSpesificOutputWish: { alg: any, res: { pixels: number, name: string } }
+  let hasSpesificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
 
   (() => {
 
@@ -87,17 +90,22 @@ else {
       if (output.endsWith("." + codec)) outputCodec = codec
       if (input.endsWith("." + codec)) inputCodec = codec
     }
+    if (alg) {
+      if (alg.length === 1) outputCodec = alg
+      else return
+    }
+    if (res) {
+      if (res.length !== 1) return
+    }
     if (inputCodec && outputCodec) {
-      hasSpesificOutputWish = { alg: outputCodec, res: {pixels: imageResolutions.UHD, name: ""} }
+      hasSpesificOutputWish = { alg: outputCodec, res: res ? {name: res[0] as any, displayName: ""} : { pixels: imageResolutions.UHD, displayName: "" } }
     }
   })()
 
-  if (hasSpesificOutputWish) {
-    render = constrImageWeb([hasSpesificOutputWish.alg], [hasSpesificOutputWish.res])
-  }
-  else {
-    render = imageWeb
-  }
+  
+
+  render = hasSpesificOutputWish ? constrImageWeb([hasSpesificOutputWish.alg], [hasSpesificOutputWish.res]) : 
+                                   constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"])
 }
 
 

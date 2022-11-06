@@ -1,17 +1,61 @@
-import * as sharp from "sharp"
+import { BorrowMap } from "./lib/borrowMap"
 const isImage = require("is-image")
-import * as fss from "fs"
+import fss from "fs"
 import * as pth from "path"
 const slash = require("slash")
 import xrray from "xrray"; xrray(Array)
 import * as cliProgress from "cli-progress"
-import * as logUpdate from "log-update"
-const { promises: fs } = fss
+import logUpdate from "log-update"
+import { promises as fs } from "fs"
 const { SingleBar } = cliProgress
 const mkDir = require("make-dir")
 const merge = require("deepmerge")
 import timoi from "timoi"
 import * as os from "os"
+import * as crypto from "crypto";
+import delay from "tiny-delay"
+
+
+
+type Options = {
+  silent?: boolean,
+  dynamicResolution?: boolean,
+  force?: boolean,
+  threads?: number,
+  debug?: boolean,
+  dryRun?: boolean
+}
+
+let _______threads = 1
+try {
+  _______threads = os.cpus().length
+}
+catch(e) {}
+const defaultOptions: Options = {
+  silent: true,
+  dynamicResolution: true,
+  force: false,
+  threads: _______threads,
+  debug: false,
+  dryRun: false
+}
+
+
+
+
+process.env.UV_THREADPOOL_SIZE = defaultOptions.threads + ""
+
+
+import sharp from "sharp"
+
+
+
+function createHash(data, len) {
+    return crypto.createHash("shake256", { outputLength: len })
+      .update(data)
+      .digest("hex");
+}
+
 
 
 const unionResWithNameSymbol = "@"
@@ -141,37 +185,51 @@ const commonAlgorithem = Object.keys(compressionOffset)
 
 
 type ImageResolutions = keyof typeof imageResolutions
-type WidthHeight = {width?: number, height: number, name?: string} | {width: number, height?: number, name?: string}
+type WidthHeight = {width?: number, height: number, displayName?: string} | {width: number, height?: number, displayName?: string}
 
 const heightToWidthFactor = 16 / 9
 
-function normalizeResolution(resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[]) {
+function normalizeResolutionName(name: string) {
+  if (typeof name === "string") {
+    if (name.endsWith("p")) {
+      const height = +name.substring(0, name.length - 1)
+      if (!isNaN(height)) return {pixels: height * heightToWidthFactor * height, displayName: name}
+    }
+    const pixels = imageResolutions[name.toUpperCase()]
+    if (pixels === undefined) throw new Error(`Invalid resolution: ${name}`)
+    return {pixels, displayName: name}
+  }
+}
+
+function normalizeResolution(resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[]) {
   return resolutions.map((res) => {
     if (typeof res === "string") {
-      if (res.endsWith("p")) {
-        const height = +res.substring(0, res.length - 1)
-        if (!isNaN(height)) return {pixels: height * heightToWidthFactor * height, name: res}
-      }
-      const pixels = imageResolutions[res.toUpperCase()]
-      if (pixels === undefined) throw new Error(`Invalid resolution: ${res}`)
-      res = {pixels, name: res}
+      res = normalizeResolutionName(res)
     }
-    else if (typeof res === "number") res = {pixels: res, name: res.toString()}
+    else if (typeof res === "number") res = {pixels: res, displayName: res.toString()}
     else {
-      const initiallyHeightWasGiven = (res as any).height !== undefined
-      const initiallyWidthWasGiven = (res as any).width !== undefined
-      let pixels: number
-      if ((res as any).pixels !== undefined) pixels = (res as any).pixels
+      if ((res as any).name !== undefined) {
+        const { displayName } = res
+        res = normalizeResolutionName((res as any).name)
+        if (displayName !== undefined) res.displayName = displayName
+      }
       else {
-        if ((res as any).width === undefined) (res as any).width = (res as any).height * heightToWidthFactor
-        else if ((res as any).height === undefined) (res as any).height = (res as any).width / heightToWidthFactor
-        pixels = (res as any).height * (res as any).width
+        const initiallyHeightWasGiven = (res as any).height !== undefined
+        const initiallyWidthWasGiven = (res as any).width !== undefined
+        let pixels: number
+        if ((res as any).pixels !== undefined) pixels = (res as any).pixels
+        else {
+          if ((res as any).width === undefined) (res as any).width = (res as any).height * heightToWidthFactor
+          else if ((res as any).height === undefined) (res as any).height = (res as any).width / heightToWidthFactor
+          pixels = (res as any).height * (res as any).width
+        }
+        res = {displayName: (res as any).displayName !== undefined ? (res as any).displayName : initiallyHeightWasGiven ? (res as any).height + "p" : initiallyWidthWasGiven ? (res as any).width + "w" : pixels.toString(), pixels}
       }
 
-      res = {name: res.name !== undefined ? res.name : initiallyHeightWasGiven ? (res as any).height + "p" : initiallyWidthWasGiven ? (res as any).width + "w" : pixels.toString(), pixels}
+      
     }
 
-    return res
+    return res as any as {displayName: string, pixels: number}
   })
 }
 
@@ -182,144 +240,91 @@ function constrFactorize(factor: number) {
   }
 }
 
-type Options = {
-  silent?: boolean,
-  dynamicResolution?: boolean,
-  force?: boolean,
-  threads?: number,
-  debug?: boolean
-}
-
-let _______threads = 1
-try {
-  _______threads = os.cpus().length
-}
-catch(e) {}
-const defaultOptions: Options = {
-  silent: true,
-  dynamicResolution: true,
-  force: false,
-  threads: _______threads,
-  debug: false
-}
 
 
-export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, name?: string} | WidthHeight)[], _options: Options = {}) {
+// export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options?: Options)
+// export function constrImageWeb(formats: ImageFormats[], resolutions: (`${number}p`)[], _options?: Options)
+export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
   return function (input: string, outputDir: string, options: Options = {}) {
     return new Promise<void>(async (res) => {
+
+      const beforeProgramDoneCbs = [] as Function[]
+
       input = slash(input)
       outputDir = slash(outputDir)
-      const inputIsFile = fss.lstatSync(input).isFile()
-      options = merge(_options, options)
-  
       if (!fss.existsSync(input)) throw new Error("Input cannot be found")
-
-  
-      let iii = input
-      if (iii.endsWith("/")) iii = iii.slice(0, -1)
-      
-      const slashCount = iii.split("/").length - (inputIsFile ? 1 : 0)
+      options = merge(_options, options)
+        
   
   
       const progress = new SingleBar({}, cliProgress.Presets.legacy)
 
       function formatFileName(fileName: string) {
-        return slash(fileName).split("/").slice(slashCount).join("/")
+        return pth.basename(fileName)
       }
 
-      let toOutFilname = (fileName: string, format: string, res: string) => {
+      const toOutFilname = (fileName: string, format: string, res: string) => {
         return `${fileName}${res !== "" ? (unionResWithNameSymbol + res) : ""}.${format.toLowerCase()}`
       }
 
 
 
-      
-  
-      const scheduleRenders = (path: string, fileName: string) => {
-        fileName = formatFileName(fileName)
-  
-        const img = sharp(path)
 
-        let lastPrepImg: any
+      const sharpInstancesIndex = new BorrowMap((inputPath: string) => sharp(inputPath))
 
-        
-        
-        const exportImg = async (outFilename: string) => {
-          if (fss.existsSync(outFilename)) {
-            if (!(await fs.lstat(outFilename)).isDirectory()) {
-              // this is only a secondary check, such a file shouldnt be in the todo queue anyway as they get filtered out by queryAlreadyExsistingFiles before
-              if (!options.force) throw new Error("Output file already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
-              // delete file
-              else await fs.unlink(outFilename)
-            }
-            else throw new Error("Output filename already exists and is a dir! This should'nt happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
-          }
-          return await img.toFile(outFilename) as any as Promise<void>
-        }
-        
-  
-        const meta = img.metadata()
-        const hasPixels = meta.then((meta) => meta.width * meta.height)
-  
-        const scheduledRenders: { (): Promise<void>, outFilename: string }[] = []
-        for (let res of reses) {
-          
-          const { name: resName } = res
+      function *getRenderTask(files: {path: string, fileName: string}[]) {
+        files.map((file) => {
+          file.fileName = formatFileName(file.fileName)
+        })
+        for (const format of formats) {
+          for (const res of reses) {
+            for (const file of files) {
+              const outFilename = pth.join(outputDir, toOutFilname(file.fileName, format, res.displayName))
+              if (alreadyDone.includes(outFilename)) continue
+              yield async (processID: any) => {
+                if (options.debug) console.log(processID, ">", pth.basename(outFilename))
+                const {elem: img, done} = sharpInstancesIndex.borrow(file.path)
+                try {
+                  const meta = await img.metadata()
+                  const hasPixels = meta.width * meta.height
+                  const srcIsBiggerThanWanted = hasPixels > res.pixels
+
+                  
+                  const factorize = srcIsBiggerThanWanted ? constrFactorize(Math.sqrt(hasPixels / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1)))) : (x: number) => x
+
+                  img.resize({
+                    width: factorize(meta.width),
+                    height: factorize(meta.height)
+                  })
 
 
-
-          function scheduleRender(format: string, prepImg?: () => (void | Promise<void>)) {
-            const outFilename = pth.join(outputDir, toOutFilname(fileName, format, resName))
-            if (!alreadyDone.includes(outFilename)) {
-              const f = async (id) => {
-                if (options.debug) console.log(id, ">", pth.basename(outFilename))
-                if (prepImg) {
-                  if (prepImg !== lastPrepImg) {
-                    lastPrepImg = prepImg
-                    await prepImg()
+                  if (fss.existsSync(outFilename)) {
+                    if (!(await fs.lstat(outFilename)).isDirectory()) {
+                      // this is only a secondary check, such a file shouldnt be in the todo queue anyway as they get filtered out by queryAlreadyExsistingFiles before
+                      if (!options.force) throw new Error("Output file already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
+                    }
+                    else throw new Error("Output filename already exists and is a dir! This shouldn't happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
                   }
+        
+                  if (options.dryRun) {
+                    console.log(`Would export ${outFilename}`)
+                    return
+                  }
+                  return await img.toFile(outFilename) as any as Promise<void>
                 }
-                
-                await exportImg(outFilename)
-                if (options.debug) console.log(id, "<    ", pth.basename(outFilename))
+                finally {
+                  if (options.debug) console.log(processID, "<    ", pth.basename(outFilename))
+                  done()
+                } 
               }
-              f.outFilename = outFilename
-              scheduledRenders.add(f as any)
             }
           }
-
-
-
-          const srcIsBiggerThanWanted = hasPixels.then((hasPixels) => hasPixels > res.pixels)
-
-          const basicPrepImg = async () => {
-            img.resize({
-              width: (await meta).width,
-              height: (await meta).height
-            })
-          }
-
-          for (let format of formats) {
-            scheduleRender(format, async () => {
-          
-              if (await srcIsBiggerThanWanted) {
-                const factorize = constrFactorize(Math.sqrt((await hasPixels) / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1))))
-
-                img.resize({
-                  width: factorize((await meta).width),
-                  height: factorize((await meta).height)
-                })
-              }
-              else {
-                scheduleRender(format, basicPrepImg)
-              }
-            })
-          }        
         }
-        return scheduledRenders
+        
       }
+      
   
   
       const queryAlreadyExsistingFiles = (name: string) => {
@@ -329,10 +334,9 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           for (let res of reses) {
             for (let format of formats) {
               
-              const outFilename = pth.join(outputDir, toOutFilname(fileName, format, res.name)) 
+              const outFilename = pth.resolve(pth.join(outputDir, toOutFilname(fileName, format, res.displayName)))
               if (fss.existsSync(outFilename)) {
                 alreadyDone.add(outFilename)
-                // is dir
                 if (fss.lstatSync(outFilename).isDirectory()) throw new Error(`Output filename: "${outFilename}" is a directory already. Terminating here before any changes are made.`)
               }
             }
@@ -377,21 +381,32 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
               if (input.endsWith("." + codec)) inputCodec = codec
             }
             if (inputCodec && outputCodec) {
-              hasSpesificOutputWish = { alg: outputCodec, res: {pixels: imageResolutions.UHD, name: ""} }
+              if (outputCodec !== formats[0]) throw new Error("Given extension of output filename does not match the given format (algorithm). Terminating here, before any changes.")
+              hasSpesificOutputWish = true
             }
           })()
       
           if (hasSpesificOutputWish) {
             const output = outputDir
-            const fileName = pth.basename(outputDir)
             outputDir = pth.join(outputDir, "..")
-            toOutFilname = (f, format, resName) => fileName
+            files = [{path: input, fileName: removeExtension(output) /* will be basenamed later, first line at scheduleRenders */}]
             alreadyDone = []
             if (fss.existsSync(output)) {
               if (fss.lstatSync(output).isDirectory()) throw new Error("Output points to a existing directory. Terminating here, before any changes.")
               else if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
-              else await fs.unlink(output)
+              else {
+                if (pth.resolve(output) === pth.resolve(input)) {
+                  const newInputPath = `${outputDir}/temp.${createHash(output, 8)}.${pth.basename(output)}`
+                  
+                  files = [{path: newInputPath, fileName: removeExtension(output) /* will be basenamed later, first line at scheduleRenders */}]
+                  await fs.rename(output, newInputPath)
+                  beforeProgramDoneCbs.push(async () => {
+                    await fs.unlink(newInputPath)
+                  })
+                }
+              }
             }
+            
           }
           
         }
@@ -408,7 +423,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         
         if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
         let startedOrderFilenames = []
-        let exitTryCount = 0
+        // let exitTryCount = 0
         // process.on('SIGINT', async () => {
         //   const maybeCorruptedCount = (files.length - startedOrderFilenames.length) > options.threads ? files.length - startedOrderFilenames.length : options.threads
         //   if (exitTryCount === 0) {
@@ -435,52 +450,26 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         }
   
 
-        const render = (() => {
-          const list = []
-          let i = 0
-          let fileIndex = 0
-
-          return (id: number) => {
-            return new Promise<void>((res, rej) => {
-              if (list[i] === undefined) {
-                for (; (fileIndex < files.length) && (list[i] === undefined); ) {
-                  const file = files[fileIndex]
-                  fileIndex++
-                  list.add(...scheduleRenders(file.path, file.fileName).map((render) => (...a) => {
-                    startedOrderFilenames.add(render.outFilename)
-                    //@ts-ignore
-                    return render(...a)
-                  }))
-                }
-  
-                if (list[i] !== undefined) list[i++](id).then(res)
-                else rej()
-              }
-              else {
-                list[i++](id).then(res)
-              }
-            })
-          }
-        })()
-
+        const renderTasksGenerator = getRenderTask(files)
 
         let done = 1
         const startThread = (async (id: number) => {
-          let failed = false
-          try {await render(id)}
-          catch(e) {failed = true}
-          if (!failed) {
+          for (const task of renderTasksGenerator) {
+            await task(id)
             if (!options.silent) progress.update(done++)
-            await startThread(id)
           }
         })
 
         const threadsList = []
-        for (let i = 0; i < options.threads; i++) {
+        sharp.concurrency(1)
+        const maxThreads = Math.min(options.threads, todoCount)
+        for (let i = 0; i < maxThreads; i++) {
           threadsList.add(startThread(i))
         }
 
         await Promise.all(threadsList)
+
+        await Promise.all(beforeProgramDoneCbs.map(cb => cb()))
 
         if (!options.silent) {
           progress.stop()
@@ -493,13 +482,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   
 }
 
+class EndOfOperation {}
 
-export const imageweb = constrImageWeb(["jpg", "webp", "png", "avif"], [
-  "4K",
-  "3K",
-  "FHD",
-  "HD",
-  "PREV"
-])
+
+
+export const imageweb = constrImageWeb(["avif", "webp", "jpg"], ["4K", "FHD", "PREV"])
 
 export default imageweb
