@@ -305,7 +305,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                   if (fss.existsSync(outFilename)) {
                     if (!(await fs.lstat(outFilename)).isDirectory()) {
                       // this is only a secondary check, such a file shouldnt be in the todo queue anyway as they get filtered out by queryAlreadyExsistingFiles before
-                      if (!options.force) throw new Error(`Output file ${outFilename} already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.`)
+                      if (!options.force) throw new Error(`Output file ${outFilename} already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. It could also be that two input files write to the same output (if they only differ by extension). Terminating here. Be aware, some files may have been computed and written to disk already.`)
                     }
                     else throw new Error(`Output filename ${outFilename} already exists and is a dir! This shouldn't happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.`)
                   }
@@ -371,7 +371,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
             if (fss.existsSync(input) && fss.lstatSync(input).isDirectory()) return
             if (fss.existsSync(outputDir)) {
               if (!fss.lstatSync(outputDir).isDirectory()) {
-                if (!options.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
+                if (!options.force) throw new Error(`Output ${outputDir} points to a existing file. Use -f to force override. Terminating here, before any changes.`)
               }
               else return
             }
@@ -383,7 +383,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
               if (input.endsWith("." + codec)) inputCodec = codec
             }
             if (inputCodec && outputCodec) {
-              if (outputCodec !== formats[0]) throw new Error("Given extension of output filename does not match the given format (algorithm). Terminating here, before any changes.")
+              if (outputCodec !== formats[0]) throw new Error(`Given extension "${outputCodec}" of output filename does not match the given format (algorithm) "${formats[0]}". Terminating here, before any changes.`)
               hasSpesificOutputWish = true
             }
           })()
@@ -412,7 +412,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           }
           
         }
-        else if (fss.existsSync(outputDir) && !fss.lstatSync(outputDir).isDirectory()) throw new Error("Output points to an existing file. Expected a directory here. Terminating here, before any changes.")
+        else if (fss.existsSync(outputDir) && !fss.lstatSync(outputDir).isDirectory()) throw new Error(`Output ${outputDir} points to an existing file. Expected a directory here. Terminating here, before any changes.`)
 
         mkDir(outputDir)
 
