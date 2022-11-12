@@ -17,6 +17,7 @@
   "scripts": {
     "build": "npm run buildCJS && npm run buildESM",
     "buildCJS": "del-cli app/dist/cjs && tsc -p ./tsconfig.prod.cjs.json",
+    "devCJS": "del-cli app/dist/cjs && tsc -p ./tsconfig.prod.cjs.json -w",
     "buildESM": "del-cli app/dist/esm && tsc -p ./tsconfig.prod.esm.json && renamer --find /\\.js$/i --replace .mjs app/dist/esm/**",
     "dev": "npm run devNode",
     "devWeb": "rollup --config rollup.web.dev.config.js -w",

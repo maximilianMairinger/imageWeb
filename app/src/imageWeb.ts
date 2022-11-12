@@ -305,9 +305,9 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                   if (fss.existsSync(outFilename)) {
                     if (!(await fs.lstat(outFilename)).isDirectory()) {
                       // this is only a secondary check, such a file shouldnt be in the todo queue anyway as they get filtered out by queryAlreadyExsistingFiles before
-                      if (!options.force) throw new Error("Output file already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
+                      if (!options.force) throw new Error(`Output file ${outFilename} already exists and the force option flag is not enabled. This should'nt happen, as this file should have been filtered out beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.`)
                     }
-                    else throw new Error("Output filename already exists and is a dir! This shouldn't happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.")
+                    else throw new Error(`Output filename ${outFilename} already exists and is a dir! This shouldn't happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.`)
                   }
         
                   if (options.dryRun) {

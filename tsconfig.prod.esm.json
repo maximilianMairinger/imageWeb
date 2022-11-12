@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "./app/dist/esm",
     "module": "es2020",
-    "target": "es2019",
+    "target": "es2018",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "declaration": true,
