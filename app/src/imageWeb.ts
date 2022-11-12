@@ -45,7 +45,12 @@ const defaultOptions: Options = {
 
 
 
-process.env.UV_THREADPOOL_SIZE = defaultOptions.threads + ""
+
+
+if (process.env.UV_THREADPOOL_SIZE === undefined) {
+  process.env.UV_THREADPOOL_SIZE = defaultOptions.threads + ""
+}
+else console.log(`Found var env var UV_THREADPOOL_SIZE. Thus using ${process.env.UV_THREADPOOL_SIZE} concurrent image renders.`)
 
 
 import sharp from "sharp"
