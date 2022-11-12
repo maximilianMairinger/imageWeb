@@ -23,7 +23,8 @@ type Options = {
   force?: boolean,
   threads?: number,
   debug?: boolean,
-  dryRun?: boolean
+  dryRun?: boolean,
+  onProgress?: (done: number, total: number) => void
 }
 
 let _______threads = 1
@@ -37,7 +38,8 @@ const defaultOptions: Options = {
   force: false,
   threads: _______threads,
   debug: false,
-  dryRun: false
+  dryRun: false,
+  onProgress: () => {}
 }
 
 
@@ -419,7 +421,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
 
 
-        let todoCount = totalNumberOfFilesPending - alreadyDone.length
+        const todoCount = totalNumberOfFilesPending - alreadyDone.length
         
         if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
         let startedOrderFilenames = []
@@ -457,6 +459,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           for (const task of renderTasksGenerator) {
             await task(id)
             if (!options.silent) progress.update(done++)
+            if (!options.onProgress) options.onProgress(done - 1, todoCount) 
           }
         })
 

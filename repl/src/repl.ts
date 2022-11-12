@@ -1,7 +1,8 @@
 import imageWeb, {constrImageWeb} from "../../app/src/imageWeb"
-//const testElem = document.querySelector("#test")
-
 import fss from "fs"
+
+
+imageWeb("try", "test_out", {silent: false})
 
 
 // if (fss.existsSync("try/temp.1e510502fd6f3f59.woo.png")) {
