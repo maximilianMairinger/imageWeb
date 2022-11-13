@@ -24,7 +24,8 @@ type Options = {
   threads?: number,
   debug?: boolean,
   dryRun?: boolean,
-  onProgress?: (done: number, total: number) => void
+  onProgress?: (done: number, total: number) => void,
+  legacyLog?: boolean
 }
 
 let _______threads = 1
@@ -39,7 +40,8 @@ const defaultOptions: Options = {
   threads: _______threads,
   debug: false,
   dryRun: false,
-  onProgress: () => {}
+  onProgress: () => {},
+  legacyLog: false
 }
 
 
@@ -356,12 +358,12 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       if (!options.silent) {
         console.log("Searching...")
         let found = 0
-        logUpdate(`Found ${found++} files`)
+        if (!options.legacyLog) logUpdate(`Found ${found++} files`)
         find = constructGetImg(!options.force ? (find, name) => {
-          logUpdate(`Found ${found++} files`)
+          if (!options.legacyLog) logUpdate(`Found ${found++} files`)
           queryAlreadyExsistingFiles(name)
         } : () => {
-          logUpdate(`Found ${found++} files`)
+          if (!options.legacyLog) logUpdate(`Found ${found++} files`)
         })
       }
       else find = constructGetImg(!options.force ? (find, name) => {
@@ -453,7 +455,11 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
         let time = timoi()
         if (!options.silent) {
-          progress.start(todoCount, 0)
+          if (!options.legacyLog) progress.start(todoCount, 0)
+          else {
+            console.log(`Rendering ${todoCount} files...`)
+            console.log(`Done count: 0/${todoCount}`)
+          }
         }
   
 
@@ -463,7 +469,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         const startThread = (async (id: number) => {
           for (const task of renderTasksGenerator) {
             await task(id)
-            if (!options.silent) progress.update(done++)
+            if (!options.silent) {
+              if (!options.legacyLog) progress.update(done++)
+              else console.log(`Done count: ${done++}/${todoCount}`)
+            } 
             if (!options.onProgress) options.onProgress(done - 1, todoCount) 
           }
         })
