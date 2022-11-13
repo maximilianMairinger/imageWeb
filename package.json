@@ -1,6 +1,6 @@
 {
   "name": "image-web",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "Image optimisation and compression for the web.",
   "main": "./app/dist/esm/imageWeb.mjs",
   "types": "./app/dist/esm/imageWeb.d.ts",
