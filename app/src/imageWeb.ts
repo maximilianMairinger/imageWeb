@@ -13,7 +13,6 @@ const merge = require("deepmerge")
 import timoi from "timoi"
 import * as os from "os"
 import * as crypto from "crypto";
-import delay from "tiny-delay"
 
 
 
@@ -48,11 +47,14 @@ const defaultOptions: Options = {
 
 
 
-
+let manuallySetUV_THREADPOOL_SIZE = false
 if (process.env.UV_THREADPOOL_SIZE === undefined) {
   process.env.UV_THREADPOOL_SIZE = defaultOptions.threads + ""
 }
-else console.log(`Found var env var UV_THREADPOOL_SIZE. Thus using ${process.env.UV_THREADPOOL_SIZE} concurrent image renders.`)
+else {
+  console.log(`Found var env var UV_THREADPOOL_SIZE. Thus using ${process.env.UV_THREADPOOL_SIZE} concurrent image renders.`)
+  manuallySetUV_THREADPOOL_SIZE = true
+}
 
 
 import sharp from "sharp"
@@ -454,11 +456,12 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         // });
 
         let time = timoi()
+        let timeSinceLast = timoi()
         if (!options.silent) {
           if (!options.legacyLogs) progress.start(todoCount, 0)
           else {
             console.log(`Rendering ${todoCount} files...`)
-            console.log(`Done count: 0/${todoCount}`)
+            console.log(`Done count: 0/${todoCount} (0ms since last; 0ms total)`)
           }
         }
   
@@ -471,14 +474,17 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
             await task(id)
             if (!options.silent) {
               if (!options.legacyLogs) progress.update(done++)
-              else console.log(`Done count: ${done++}/${todoCount}`)
+              else {
+                console.log(`Done count: ${done++}/${todoCount} (${timeSinceLast.str()} since last; ${time.str()} total)`)
+                timeSinceLast = timoi()
+              }
             } 
             if (!options.onProgress) options.onProgress(done - 1, todoCount) 
           }
         })
 
         const threadsList = []
-        sharp.concurrency(1)
+        if (!manuallySetUV_THREADPOOL_SIZE) sharp.concurrency(1)
         const maxThreads = Math.min(options.threads, todoCount)
         for (let i = 0; i < maxThreads; i++) {
           threadsList.add(startThread(i))
