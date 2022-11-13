@@ -292,7 +292,8 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         for (const format of formats) {
           for (const res of reses) {
             for (const file of files) {
-              const outFilename = pth.join(outputDir, toOutFilname(file.fileName, format, res.displayName))
+              const onlyFileName = toOutFilname(file.fileName, format, res.displayName)
+              const outFilename = pth.join(outputDir, onlyFileName)
               if (alreadyDone.includes(outFilename)) continue
               yield async (processID: any) => {
                 if (options.debug) console.log(processID, ">", pth.basename(outFilename))
@@ -321,9 +322,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         
                   if (options.dryRun) {
                     console.log(`Would export ${outFilename}`)
-                    return
+                    return onlyFileName
                   }
-                  return await img.toFile(outFilename) as any as Promise<void>
+                  await img.toFile(outFilename) as any as Promise<void>
+                  return onlyFileName
                 }
                 finally {
                   if (options.debug) console.log(processID, "<    ", pth.basename(outFilename))
@@ -471,11 +473,11 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         let done = 1
         const startThread = (async (id: number) => {
           for (const task of renderTasksGenerator) {
-            await task(id)
+            const fileName = await task(id)
             if (!options.silent) {
               if (!options.legacyLogs) progress.update(done++)
               else {
-                console.log(`Done count: ${done++}/${todoCount} (${timeSinceLast.str()} since last; ${time.str()} total)`)
+                console.log(`Done count: ${done++}/${todoCount} (${timeSinceLast.str()} since last; ${time.str()} total) - "${fileName}"`)
                 timeSinceLast = timoi()
               }
             } 
