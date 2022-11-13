@@ -458,7 +458,6 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         // });
 
         let time = timoi()
-        let timeSinceLast = timoi()
         if (!options.silent) {
           if (!options.legacyLogs) progress.start(todoCount, 0)
           else {
@@ -472,12 +471,13 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
         let done = 1
         const startThread = (async (id: number) => {
+          let timeSinceLast = timoi()
           for (const task of renderTasksGenerator) {
             const fileName = await task(id)
             if (!options.silent) {
               if (!options.legacyLogs) progress.update(done++)
               else {
-                console.log(`Done count: ${done++}/${todoCount} (${timeSinceLast.str()} since last; ${time.str()} total) - "${fileName}"`)
+                console.log(`Done count: ${done++}/${todoCount} (${timeSinceLast.str()} since last (on this thread); ${time.str()} total) - "${fileName}"`)
                 timeSinceLast = timoi()
               }
             } 
