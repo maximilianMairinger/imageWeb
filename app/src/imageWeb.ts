@@ -439,7 +439,8 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
 
         const todoCount = totalNumberOfFilesPending - alreadyDone.length
-        
+        if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
+
         
         let startedOrderFilenames = []
         // let exitTryCount = 0
@@ -473,7 +474,6 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           }
         }
 
-        if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
   
 
         const renderTasksGenerator = getRenderTask(files)
