@@ -258,14 +258,19 @@ function constrFactorize(factor: number) {
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
-  return function (input: string, outputDir: string, options: Options = {}) {
+  return function (input: string | string[], outputDir: string, options: Options = {}) {
     return new Promise<void>(async (res) => {
 
       const beforeProgramDoneCbs = [] as Function[]
 
-      input = slash(input)
       outputDir = slash(outputDir)
-      if (!fss.existsSync(input)) throw new Error("Input cannot be found")
+
+      input = input instanceof Array ? input : [input]
+      input = input.map((input) => slash(input))
+      
+      input.forEach((input) => {
+        if (!fss.existsSync(input)) throw new Error(`Input ${input} cannot be found`)
+      })
       options = merge(_options, options)
         
   
@@ -374,12 +379,13 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         queryAlreadyExsistingFiles(name)
       } : undefined)
       
-      find([input], "").done(async (files: {path: string, fileName: string}[]) => {
+      find(input, "").done(async (files: {path: string, fileName: string}[]) => {
         const totalNumberOfFilesPending = files.length * reses.length * formats.length
-        if (totalNumberOfFilesPending === 1) {
+        if (totalNumberOfFilesPending === 1 && input.length === 1) {
           let hasSpesificOutputWish: any
           (() => {
-            if (fss.existsSync(input) && fss.lstatSync(input).isDirectory()) return
+            input = input[0]
+            if (fss.existsSync(input) && fss.lstatSync(input).isDirectory()) return  
             if (fss.existsSync(outputDir)) {
               if (!fss.lstatSync(outputDir).isDirectory()) {
                 if (!options.force) throw new Error(`Output ${outputDir} points to a existing file. Use -f to force override. Terminating here, before any changes.`)
@@ -434,7 +440,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
         const todoCount = totalNumberOfFilesPending - alreadyDone.length
         
-        if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
+        
         let startedOrderFilenames = []
         // let exitTryCount = 0
         // process.on('SIGINT', async () => {
@@ -459,12 +465,15 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
         let time = timoi()
         if (!options.silent) {
+          console.log(`Rendering to "${outputDir}"...`)
           if (!options.legacyLogs) progress.start(todoCount, 0)
           else {
-            console.log(`Rendering ${todoCount} files...`)
+            console.log(`Rendering ${todoCount} files to "${outputDir}"...`)
             console.log(`Done count: 0/${todoCount} (0ms since last; 0ms total)`)
           }
         }
+
+        if (!options.silent) console.log("Rendering on " + options.threads + " threads.")
   
 
         const renderTasksGenerator = getRenderTask(files)

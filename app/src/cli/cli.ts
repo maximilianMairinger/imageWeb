@@ -4,16 +4,17 @@ import * as path from "path"
 import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from "../imageWeb"
 import { program } from "commander"
 import reqPackageJson from "req-package-json"
-import findNextDirname from "./findNextDirname"
+import findNextDirname, { findNextCommonDirname } from "./findNextDirname"
 import * as fs from "fs"
 const merge = require("deepmerge")
 const config = reqPackageJson(__dirname)
 
+
 program
   .version(config.version)
   .name(config.name)
-
-program
+  .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
+  .argument('[output]', 'May be a folder where to dump the output file(s). Defaults to "${input}_output". Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg."')
   .option('-s, --silent', 'silence stdout')
   .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
@@ -22,19 +23,25 @@ program
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
   .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
   .option('-d --debug', 'Enable debug logging. Defaults to false.')
-.parse(process.argv)
 
 
+program.parse();
+
+  
+
+
+
+const ops = program.opts();
 
 const options = (() => {
   const end = {} as any
 
-  if (program.silent !== undefined) end.silent = program.silent
-  if (program.noDynamicResolution !== undefined) end.dynamicResolution = !program.noDynamicResolution
-  if (program.force !== undefined) end.force = program.force
-  if (program.threads !== undefined) end.threads = +program.threads
-  if (program.debug !== undefined) end.debug = program.debug
-  if (program.legacyLogs !== undefined) end.legacyLogs = program.legacyLogs
+  if (ops.silent !== undefined) end.silent = ops.silent
+  if (ops.dynamicResolution !== undefined) end.dynamicResolution = ops.dynamicResolution
+  if (ops.force !== undefined) end.force = ops.force
+  if (ops.threads !== undefined) end.threads = +ops.threads
+  if (ops.debug !== undefined) end.debug = ops.debug
+  if (ops.legacyLogs !== undefined) end.legacyLogs = ops.legacyLogs
   
   return end
 })() as {
@@ -49,21 +56,22 @@ const options = (() => {
 const commonResolutions = Object.keys(imageResolutions)
 const commonAlgorithem = Object.keys(compressionOffset)
 
-let [ input, output ] = program.args
-input = path.resolve("", input ? input : "")
-output = path.resolve("", output ? output : path.join(config.name + "_output", findNextDirname(input)))
+let [ inputt, output ] = program.args
+let input: string[] | string
+input = inputt.split(",").map((input) => path.resolve("", input ? input : ""))
+output = path.resolve("", output ? output : path.join(config.name + "_output", findNextCommonDirname(input)))
 
 let render: typeof imageWeb
 
 
 
 
-const alg = !program.algorithms ? undefined : program.algorithms.split(",").map(alg => {
+const alg = !ops.algorithms ? undefined : ops.algorithms.split(",").map(alg => {
   if (commonAlgorithem.includes(alg)) return alg
   else throw new Error("Unknown algorithm " + alg)
 }) as ("png" | "webp" | "jpg" | "tiff" | "avif")[]
 
-const res = !program.resolutions ? undefined : program.resolutions.split(",").map(res => {
+const res = !ops.resolutions ? undefined : ops.resolutions.split(",").map(res => {
   if (!isNaN(+res)) return +res
   else if (commonResolutions.includes(res)) return res
   else if (res.endsWith("p") && !isNaN(+res.substring(0, res.length-1))) return res
@@ -79,7 +87,8 @@ else {
   let hasSpesificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
 
   (() => {
-
+    if (input.length !== 1) return
+    input = input[0]
     if (fs.existsSync(input) && fs.lstatSync(input).isDirectory()) return
     if (fs.existsSync(output)) {
       if (!fs.lstatSync(output).isDirectory()) {
