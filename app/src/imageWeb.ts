@@ -32,11 +32,26 @@ try {
   _______threads = os.cpus().length
 }
 catch(e) {}
+
+
+let manuallySetUV_THREADPOOL_SIZE = false
+if (process.env.UV_THREADPOOL_SIZE === undefined) {
+  process.env.UV_THREADPOOL_SIZE = _______threads + ""
+}
+else {
+  console.log(`Found var env var UV_THREADPOOL_SIZE. Thus using ${process.env.UV_THREADPOOL_SIZE} concurrent image renders.`)
+  assert(typeof +process.env.UV_THREADPOOL_SIZE === "number")
+  manuallySetUV_THREADPOOL_SIZE = true
+}
+
+
+
+
 const defaultOptions: Options = {
   silent: true,
   dynamicResolution: true,
   force: false,
-  threads: _______threads,
+  threads: manuallySetUV_THREADPOOL_SIZE ? +process.env.UV_THREADPOOL_SIZE : _______threads,
   debug: false,
   dryRun: false,
   onProgress: () => {},
@@ -47,17 +62,10 @@ const defaultOptions: Options = {
 
 
 
-let manuallySetUV_THREADPOOL_SIZE = false
-if (process.env.UV_THREADPOOL_SIZE === undefined) {
-  process.env.UV_THREADPOOL_SIZE = defaultOptions.threads + ""
-}
-else {
-  console.log(`Found var env var UV_THREADPOOL_SIZE. Thus using ${process.env.UV_THREADPOOL_SIZE} concurrent image renders.`)
-  manuallySetUV_THREADPOOL_SIZE = true
-}
 
 
 import sharp from "sharp"
+import { assert } from "console"
 
 
 
