@@ -307,7 +307,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
             for (const file of files) {
               const onlyFileName = toOutFilname(file.fileName, format, res.displayName)
               const outFilename = pth.join(outputDir, onlyFileName)
-              if (alreadyDone.includes(outFilename)) continue
+              if (alreadyDone.includes(pth.resolve(outFilename))) continue
               yield async (processID: any) => {
                 if (options.debug) console.log(processID, ">", pth.basename(outFilename))
                 const {elem: img, done} = sharpInstancesIndex.borrow(file.path)
@@ -362,7 +362,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
               
               const outFilename = pth.resolve(pth.join(outputDir, toOutFilname(fileName, format, res.displayName)))
               if (fss.existsSync(outFilename)) {
-                alreadyDone.add(outFilename)
+                alreadyDone.add(pth.resolve(outFilename))
                 if (fss.lstatSync(outFilename).isDirectory()) throw new Error(`Output filename: "${outFilename}" is a directory already. Terminating here before any changes are made.`)
               }
             }
