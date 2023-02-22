@@ -1,6 +1,10 @@
 # Web image
 
-Image optimization and compression for the web. Bulk resize and compress them for dynamic resource deployment. Intended for preload images, thumbnails, client dependent compression algorithms (avif for browsers that support it), end device dependent resolution (4K screen => 4K image)
+Image optimization and compression for the web. Bulk resize and compress them for dynamic resource deployment. Intended for preload images, thumbnails, client dependent compression algorithms (avif for browsers that support it), end device dependent resolution (
+
+
+
+screen => 4K image)
 
 ## Installation
 
@@ -10,7 +14,7 @@ Image optimization and compression for the web. Bulk resize and compress them fo
 
 ## Usage
 
-Take files from `src/res/img` compress them (as *avif, webp, jpg & png* in *4K, 3K, FHD, HD & PREV*) and pipes them to `dist/res/img` properly named (e.g. `image-name@4K.webp`).
+Take files from `src/res/img` compress them (as `avif`, `webp` and `jpg` in `UHD`, `FHD`, `PREV`) and pipes them to `dist/res/img` properly named (e.g. `image-name@UHD.webp`).
 
 ### CLI
 
@@ -21,11 +25,11 @@ Take files from `src/res/img` compress them (as *avif, webp, jpg & png* in *4K, 
 The options are analog the the ones available to the API. Please view `image-web --help` for a comprehensive list. Here an example with options:
 
 ```shell
- $ image-web src/res/img dist/res/img --algorithm avif,webp --resolution 4K,2K,PREV
+ $ image-web src/res/img dist/res/img --algorithm avif,webp --resolution QHD,SD
  $ image-web src/res/img dist/res/img -a avif,webp -r 2160p,1080p,15p
 ```
 
-Another example: Sanitize/recodec a single image (4K resolution, codec infered by output file type):
+Another example: Sanitize/recodec a single image (UHD resolution, codec infered by output file type):
 
 ```shell
  $ image-web src/res/img/image-name.png dist/res/img/image-name.webp
