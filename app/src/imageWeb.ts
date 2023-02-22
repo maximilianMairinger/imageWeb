@@ -528,6 +528,6 @@ class EndOfOperation {}
 
 
 
-export const imageweb = constrImageWeb(["avif", "webp", "jpg"], ["4K", "FHD", "PREV"])
+export const imageweb = constrImageWeb(["avif", "webp", "jpg"], ["UHD", "FHD", "PREV"])
 
 export default imageweb
