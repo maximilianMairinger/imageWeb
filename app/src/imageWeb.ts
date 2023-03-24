@@ -258,12 +258,21 @@ function constrFactorize(factor: number) {
     return q < 1 ? 1 : q
   }
 }
+type Bytes = number
+// make an educated guess about a resolution to fit a target filesize (in bytes)
+function guessResolution(format: "jpg" | "png" | "webp" | "avif", targetSizeBytes: Bytes) {
+  const factor = compressionOffset[format]
+  const factorize = constrFactorize(factor)
+  const pixels = factorize(targetSizeBytes 
+}
 
 
 
 // export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options?: Options)
 // export function constrImageWeb(formats: ImageFormats[], resolutions: (`${number}p`)[], _options?: Options)
-export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
+export function constrImageWeb(formats: ImageFormats[], targetSize: Bytes, _options?: Options) 
+export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options?: Options)
+export function constrImageWeb(formats: ImageFormats[], resolutions_targetSize: Bytes | (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
   return function (input: string | string[], outputDir: string, options: Options = {}) {
