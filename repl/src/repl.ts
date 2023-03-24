@@ -2,7 +2,7 @@ import imageWeb, {constrImageWeb} from "../../app/src/imageWeb"
 import fss from "fs"
 
 
-imageWeb("try", "test_out", {silent: false})
+constrImageWeb(["jpg"], [3078*5472, 3078*547123])("try/test3.jpg", "test_out", {silent: false, force: true, dynamicResolution: false})
 
 
 // if (fss.existsSync("try/temp.1e510502fd6f3f59.woo.png")) {

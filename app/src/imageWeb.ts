@@ -13,6 +13,8 @@ const merge = require("deepmerge")
 import timoi from "timoi"
 import * as os from "os"
 import * as crypto from "crypto";
+import keyIndex from "key-index"
+import ResablePromise from "resable-promise"
 
 
 
@@ -266,6 +268,9 @@ function constrFactorize(factor: number) {
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
   _options = merge(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
+
+  const doneIndex = keyIndex((codec: string) => keyIndex((pixels: number) => keyIndex((srcName: string) => false as false | ResablePromise<{path: string}>)))
+
   return function (input: string | string[], outputDir: string, options: Options = {}) {
     return new Promise<void>(async (res) => {
 
@@ -280,6 +285,9 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         if (!fss.existsSync(input)) throw new Error(`Input ${input} cannot be found`)
       })
       options = merge(_options, options)
+
+      if (options.debug || options.dryRun) options.legacyLogs = true // the progress bar swallows all logs during the process
+
         
   
   
@@ -303,6 +311,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           file.fileName = formatFileName(file.fileName)
         })
         for (const format of formats) {
+          const formatDoneIndex = doneIndex(format)
           for (const res of reses) {
             for (const file of files) {
               const onlyFileName = toOutFilname(file.fileName, format, res.displayName)
@@ -312,17 +321,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                 if (options.debug) console.log(processID, ">", pth.basename(outFilename))
                 const {elem: img, done} = sharpInstancesIndex.borrow(file.path)
                 try {
-                  const meta = await img.metadata()
-                  const hasPixels = meta.width * meta.height
-                  const srcIsBiggerThanWanted = hasPixels > res.pixels
-
                   
-                  const factorize = srcIsBiggerThanWanted ? constrFactorize(Math.sqrt(hasPixels / (res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1)))) : (x: number) => x
-
-                  img.resize({
-                    width: factorize(meta.width),
-                    height: factorize(meta.height)
-                  })
 
 
                   if (fss.existsSync(outFilename)) {
@@ -332,12 +331,55 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                     }
                     else throw new Error(`Output filename ${outFilename} already exists and is a dir! This shouldn't happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.`)
                   }
+
+
+                  const wantedPixels = res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1)
+                  const meta = await img.metadata()
+                  const hasPixels = meta.width * meta.height
+                  const targetIsBiggerThanSrc = hasPixels < wantedPixels
+
+                  const actualPixels = targetIsBiggerThanSrc ? hasPixels : wantedPixels
+
+                  const resDoneIndex = formatDoneIndex(actualPixels)
+                  const isDoneProm = resDoneIndex(file.fileName)
+                  if (isDoneProm) {
+                    // dont block execution. The copying of the file can happen in parallel without worrying about cpu usage
+                    isDoneProm.then(async (isDone) => {
+                      // copy
+                      if (options.debug) console.log(processID, "copy", pth.basename(outFilename))
+                      if (options.dryRun) {
+                        console.log(`Would copy ${isDone.path} to ${outFilename}`)
+                        return onlyFileName
+                      }
+                      await fs.copyFile(isDone.path, outFilename)
+                    })
+                    
+                    return onlyFileName
+                  }
+
+
+                  const resAbleProm = new ResablePromise<{path: string}>()
+                  resDoneIndex(file.fileName, resAbleProm)
+
+
+
+                  const factorize = targetIsBiggerThanSrc ? (x: number) => x : constrFactorize(Math.sqrt(wantedPixels / hasPixels))
+
+                  img.resize({
+                    width: factorize(meta.width),
+                    height: factorize(meta.height)
+                  })
+
+
+                  
         
                   if (options.dryRun) {
-                    console.log(`Would export ${outFilename}`)
+                    console.log(`Would render ${outFilename}`)
+                    resAbleProm.res({path: outFilename})
                     return onlyFileName
                   }
                   await img.toFile(outFilename) as any as Promise<void>
+                  resAbleProm.res({path: outFilename})
                   return onlyFileName
                 }
                 finally {
