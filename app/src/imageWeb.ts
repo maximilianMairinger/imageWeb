@@ -256,7 +256,7 @@ function normalizeResolution(resolutions: (ImageResolutions | Pixels | `${number
 
 function constrFactorize(factor: number) {
   return function factorize(length: number) {
-    const q = Math.round(length / factor)
+    const q = Math.round(length * factor)
     return q < 1 ? 1 : q
   }
 }
