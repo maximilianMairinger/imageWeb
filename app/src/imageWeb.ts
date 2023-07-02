@@ -216,10 +216,14 @@ function normalizeResolutionName(name: string) {
       const height = +name.substring(0, name.length - 1)
       if (!isNaN(height)) return {pixels: height * heightToWidthFactor * height, displayName: name}
     }
-    const pixels = imageResolutions[name.toUpperCase()]
-    if (pixels === undefined) throw new Error(`Invalid resolution: ${name}`)
+    let pixels = imageResolutions[name.toUpperCase()]
+    if (pixels === undefined) {
+      if (!isNaN(+name)) pixels = +name
+      else throw new Error(`Invalid resolution: ${name}`)
+    }
     return {pixels, displayName: name}
   }
+  else throw new Error(`Invalid resolution: ${name}`)
 }
 
 function normalizeResolution(resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[]) {

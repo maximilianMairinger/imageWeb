@@ -76,7 +76,7 @@ const res = !ops.resolutions ? undefined : ops.resolutions.split(",").map(res =>
   else if (commonResolutions.includes(res)) return res
   else if (res.endsWith("p") && !isNaN(+res.substring(0, res.length-1))) return res
   else throw new Error("Unknown resolution " + res)
-}) as any
+}) 
 
 
 
@@ -84,7 +84,7 @@ if (alg && res) {
   render = constrImageWeb(alg, res)
 }
 else {
-  let hasSpesificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
+  let hasSpecificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
 
   (() => {
     if (input.length !== 1) return
@@ -110,13 +110,13 @@ else {
       if (res.length !== 1) return
     }
     if (inputCodec && outputCodec) {
-      hasSpesificOutputWish = { alg: outputCodec, res: res ? {name: res[0] as any, displayName: ""} : { pixels: imageResolutions.UHD, displayName: "" } }
+      hasSpecificOutputWish = { alg: outputCodec, res: res ? {name: res[0] + "", displayName: ""} : { pixels: imageResolutions.UHD, displayName: "" } }
     }
   })()
 
   
 
-  render = hasSpesificOutputWish ? constrImageWeb([hasSpesificOutputWish.alg], [hasSpesificOutputWish.res]) : 
+  render = hasSpecificOutputWish ? constrImageWeb([hasSpecificOutputWish.alg], [hasSpecificOutputWish.res]) : 
                                    constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"])
 }
 
