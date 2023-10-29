@@ -5,18 +5,21 @@ import json from '@rollup/plugin-json'
 
 
 export default {
-  input: 'repl/src/repl.ts',
+  input: 'test/src/test.ts',
   output: {
-    file: 'repl/dist/imageWeb-repl.js',
+    file: 'test/dist/test.js',
     format: 'cjs',
     sourcemap: true
   },
   plugins: [
-    typescript({tsconfig: "./tsconfig.dev.json", noEmitOnError: false, sourceMap: true}), 
+    typescript({tsconfig: "./tsconfig.test.json", noEmitOnError: false, sourceMap: true}), 
     resolve({modulesOnly: true, preferBuiltins: true}),
     commonJS({
       include: 'node_modules/**'
     }),
     json()
-  ]
+  ],
+  // dont log errors
+  onwarn: () => {}
 };
+

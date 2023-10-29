@@ -2,15 +2,21 @@
   "compilerOptions": {
     "outDir": "./app/dist/esm",
     "module": "es2020",
-    "target": "es2018",
+    "target": "es2020",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
     "declaration": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "lib": ["es2022", "DOM"]
   },
   "exclude": [
     "./test",
-    "./app/dist",
-    "./repl"
+    "./repl",
+    "./app/dist"
+  ],
+  "include": [
+    "./app/src"
   ]
 }
