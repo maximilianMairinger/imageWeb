@@ -14,7 +14,7 @@ import timoi from "timoi"
 import * as os from "os"
 import * as crypto from "crypto";
 import keyIndex from "key-index"
-import ResablePromise from "resable-promise"
+import { ResablePromise } from "more-proms"
 import sharp from "sharp"
 
 

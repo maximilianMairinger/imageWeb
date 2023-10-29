@@ -8,5 +8,6 @@
     "allowJs": true,
     "skipLibCheck": true,
     "lib": ["es2022", "DOM"]
-  }
+  },
+  "exclude": ["app/dist", "**.js", "repl/dist", "**.mjs"]
 }
