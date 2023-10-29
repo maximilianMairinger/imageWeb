@@ -15,6 +15,7 @@ import * as os from "os"
 import * as crypto from "crypto";
 import keyIndex from "key-index"
 import ResablePromise from "resable-promise"
+import sharp from "sharp"
 
 
 
@@ -42,8 +43,12 @@ if (process.env.UV_THREADPOOL_SIZE === undefined) {
 }
 else {
   console.log(`Found var env var UV_THREADPOOL_SIZE. Thus using ${process.env.UV_THREADPOOL_SIZE} concurrent image renders.`)
-  assert(typeof +process.env.UV_THREADPOOL_SIZE === "number")
-  manuallySetUV_THREADPOOL_SIZE = true
+  if (typeof +process.env.UV_THREADPOOL_SIZE === "number") {
+    manuallySetUV_THREADPOOL_SIZE = true
+  }
+  else {
+    console.log(`But it is not a number. Thus using ${_______threads} concurrent image renders.`)
+  }
 }
 
 
@@ -66,8 +71,7 @@ const defaultOptions: Options = {
 
 
 
-import sharp from "sharp"
-import { assert } from "console"
+
 
 
 
