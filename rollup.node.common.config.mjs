@@ -96,8 +96,7 @@ const config = {
           const isCjs = isCjsRegex.test(fileContent)
           
           if (isCjs) {
-            console.log(fileContent)
-            console.log("resolved module2:", mod, "as cjs")
+            // console.log("resolved module2:", mod, "as cjs")
             return false
           }
         }
