@@ -22,6 +22,9 @@ const isCjsRegex = /(((module)((\[[`"'])|\.))?exports([`"']\])?((\.|(\[[`"']))[^
 // onetime is still bugged
 // open issue in rollup
 
+// todo2
+// when doing pnpm all sub deps cannot be found, as they are not directly in node_modules. But then we dont know what version, and the tree traversal of rollup seems to be in arbitrary order
+
 const config = {
   input: './repl/src/repl.ts',
   output: {
@@ -96,7 +99,10 @@ const config = {
           const isCjs = isCjsRegex.test(fileContent)
           
           if (isCjs) {
-            // console.log("resolved module2:", mod, "as cjs")
+            // if (mod === "wrap-ansi") {
+            //   console.log(fileContent)
+            // }
+            console.log("resolved module2:", mod, "as cjs")
             return false
           }
         }

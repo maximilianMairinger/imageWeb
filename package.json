@@ -69,6 +69,7 @@
   },
   "dependencies": {
     "cli-progress": "^3.8.2",
+    "colorful-cli-logger": "^1.0.2",
     "commander": "^9.4.1",
     "deepmerge": "^4.2.2",
     "fast-linked-list": "^3.1.1",
