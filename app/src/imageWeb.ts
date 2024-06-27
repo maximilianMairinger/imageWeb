@@ -16,7 +16,7 @@ import * as crypto from "crypto";
 import keyIndex from "key-index"
 import { ResablePromise } from "more-proms"
 import sharp from "sharp"
-
+export { watch } from "./watch"
 
 
 type Options = {

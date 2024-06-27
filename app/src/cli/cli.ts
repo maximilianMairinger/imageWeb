@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as path from "path"
-import imageWeb, { imageResolutions, compressionOffset, constrImageWeb } from "../imageWeb"
+import imageWeb, { imageResolutions, compressionOffset, constrImageWeb, watch } from "../imageWeb"
 import { program } from "commander"
 import reqPackageJson from "req-package-json"
 import findNextDirname, { findNextCommonDirname } from "./findNextDirname"
@@ -77,21 +77,9 @@ const outputSani = (input: string[], output?: string) => {
 // input = inputt.split(",").map((input) => path.resolve("", input ? input : ""))
 // output = path.resolve("", output ? output : path.join(config.name + "_output", findNextCommonDirname(input)))
 
-program
-  .version(config.version)
-  .name(config.name)
-  .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
-  .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg."')
-  .option('-s, --silent', 'silence stdout')
-  .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
-  .option('-f, --force', 'force override files when one with the same name is found')
-  .option('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
-  .option('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
-  .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
-  .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
-  .option('-d --debug', 'Enable debug logging. Defaults to false.')
-  .action((_input, _output, ops: any) => {
-    const cliOptions = saniCliSpecificOptions(ops)
+
+function makeImageWebInstanceFromCliOptions(_input: any, _output: any, ops: any) {
+  const cliOptions = saniCliSpecificOptions(ops)
     const renderOptions = renderOptionsSani(ops)
     const input = inputSani(_input)
     const output = outputSani(input, _output)
@@ -139,17 +127,64 @@ program
         constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"])
     }
 
+    return {
+      imageWeb: render,
+      renderOptions,
+      cliOptions,
+      input,
+      output
+    }
+}
+
+
+program
+  .version(config.version)
+  .name(config.name)
+  .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
+  .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg."')
+  .option('-s, --silent', 'silence stdout')
+  .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
+  .option('-f, --force', 'force override files when one with the same name is found')
+  .option('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
+  .option('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
+  .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
+  .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
+  .option('-d --debug', 'Enable debug logging. Defaults to false.')
+  .action((_input, _output, ops: any) => {
+    const { imageWeb, input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
 
     if (!renderOptions.silent) console.log(`Running version: v${config.version}`)
-
-    const prom = render(input, output, renderOptions)
-
+    const prom = imageWeb(input, output, renderOptions)
     if (!renderOptions.silent) prom.then(() => {
       console.log("Done.")
     })
   })
 
-.parse()
+
+
+const saniArrayOfOne = sani(new AND(Array, ensure((a) => a.length === 1), a => a[0])) as any as <T, R extends any[]>(a: T[]) => T
+
+program.command("watch")
+  .description("Starts service that listens to a directory for changes and automatically converts images")
+  .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
+  .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg."')
+  .option('-s, --silent', 'silence stdout')
+  .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
+  .option('-f, --force', 'force override files when one with the same name is found')
+  .option('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
+  .option('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
+  .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
+  .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
+  .option('-d --debug', 'Enable debug logging. Defaults to false.')
+  .action((_input, _output, ops: any) => {
+    const { imageWeb, input: __input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
+    const input = saniArrayOfOne(__input)
+
+    if (!renderOptions.silent) console.log(`Running version: v${config.version}. Watching ${input} for changes.`)
+    watch(input, output, imageWeb)
+  })
+
+program.parse()
 
 
   
