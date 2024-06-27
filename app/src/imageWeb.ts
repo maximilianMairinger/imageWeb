@@ -1,15 +1,15 @@
-import { BorrowMap } from "./lib/borrowMap"
-const isImage = require("is-image")
+import { BorrowMap } from "more-maps"
+import isImage from "is-image"
 import fss from "fs"
 import * as pth from "path"
-const slash = require("slash")
+import slash from "slash"
 import xrray from "xrray"; xrray(Array)
 import * as cliProgress from "cli-progress"
 import logUpdate from "log-update"
 import { promises as fs } from "fs"
 const { SingleBar } = cliProgress
-const mkDir = require("make-dir")
-const merge = require("deepmerge")
+import mkDir from "make-dir"
+import { mergeKeysDeep } from "circ-clone"
 import timoi from "timoi"
 import * as os from "os"
 import * as crypto from "crypto";
@@ -274,7 +274,7 @@ function constrFactorize(factor: number) {
 // export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options?: Options)
 // export function constrImageWeb(formats: ImageFormats[], resolutions: (`${number}p`)[], _options?: Options)
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
-  _options = merge(defaultOptions, _options)
+  _options = mergeKeysDeep(defaultOptions, _options)
   const reses = normalizeResolution(resolutions)
 
   const doneIndex = keyIndex((codec: string) => keyIndex((pixels: number) => keyIndex((srcName: string) => false as false | ResablePromise<{path: string}>)))
@@ -293,7 +293,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       input.forEach((input) => {
         if (!fss.existsSync(input)) throw new Error(`Input ${input} cannot be found`)
       })
-      options = merge(_options, options)
+      options = mergeKeysDeep(_options, options)
 
       if (options.debug || options.dryRun) options.legacyLogs = true // the progress bar swallows all logs during the process
 
