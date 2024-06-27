@@ -2,7 +2,7 @@
 
 import * as path from "path"
 import imageWeb, { imageResolutions, compressionOffset, constrImageWeb, watch } from "../imageWeb"
-import { Command,  } from "commander"
+import { Command } from "commander"
 const program = new Command()
 import reqPackageJson from "req-package-json"
 import findNextDirname, { findNextCommonDirname } from "./findNextDirname"
