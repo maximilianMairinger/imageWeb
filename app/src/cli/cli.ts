@@ -2,7 +2,8 @@
 
 import * as path from "path"
 import imageWeb, { imageResolutions, compressionOffset, constrImageWeb, watch } from "../imageWeb"
-import { program } from "commander"
+import { Command,  } from "commander"
+const program = new Command()
 import reqPackageJson from "req-package-json"
 import findNextDirname, { findNextCommonDirname } from "./findNextDirname"
 import sani, { AND, OR, numberLikePattern, numericRange, ensure } from "sanitize-against"
@@ -16,7 +17,7 @@ const commonAlgorithms = Object.keys(compressionOffset) as (keyof typeof compres
 
 const saniCliSpecificOptions = sani({
   algorithms: new AND(
-    String,
+    sani(String, "Algorithms must be a string"),
     (a: string) => a.split(",").map(a => a.trim()), 
     ensure((a: typeof commonAlgorithms) => a.every(a => commonAlgorithms.includes(a)), "Unknown algorithm"),
     ensure((a: string[]) => a.length > 0, "At least one algorithm must be specified"),
@@ -31,7 +32,7 @@ const saniCliSpecificOptions = sani({
     }, "Duplicate algorithms specified") as (a: string[]) => []
   ) as any as (s: string) => typeof commonAlgorithms,
   resolutions: new AND(
-    String,
+    sani(String, "Resolutions must be a string"),
     a => a.split(",").map(a => a.trim()),     
     ensure(a => a.every(
       a => commonResolutions.includes(a) || 
@@ -49,7 +50,7 @@ const saniCliSpecificOptions = sani({
       return true
     }, "Duplicate resolutions specified") as (a: string[]) => []
   ) as any as (s: string) => typeof commonResolutions
-})
+}) as any
 
 const renderOptionsSani = sani({
   silent: false,
@@ -137,16 +138,25 @@ function makeImageWebInstanceFromCliOptions(_input: any, _output: any, ops: any)
 }
 
 
+// quick fix: When a root command is specified, a sub command cannot take options for some reasons. So only specify root command when sub command is not called
+
+const usingSubCommand = process.argv.includes("watch")
+
+
 program
   .version(config.version)
   .name(config.name)
+  .description(config.description)
+
+
+if (!usingSubCommand) program
   .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
-  .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg."')
+  .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg".')
   .option('-s, --silent', 'silence stdout')
-  .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
+  .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
-  .option('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
-  .option('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
+  .requiredOption('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
+  .requiredOption('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
   .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
   .option('-d --debug', 'Enable debug logging. Defaults to false.')
@@ -161,22 +171,26 @@ program
   })
 
 
-
+const saniString = sani(String)
 const saniArrayOfOne = sani(new AND(Array, ensure((a) => a.length === 1), a => a[0])) as any as <T, R extends any[]>(a: T[]) => T
 
 program.command("watch")
   .description("Starts service that listens to a directory for changes and automatically converts images")
-  .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
-  .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg."')
+  .argument('<input>', 'Input directory to (deeply) query files from.')
+  .argument('<output>', 'Folder where to dump the output files.')
   .option('-s, --silent', 'silence stdout')
-  .option('-d, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
+  .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
-  .option('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
-  .option('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
+  .requiredOption('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
+  .requiredOption('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
   .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
   .option('-d --debug', 'Enable debug logging. Defaults to false.')
   .action((_input, _output, ops: any) => {
+    saniString(_input, "Input must be a string, representing a path leading to a directory.")
+    saniString(_output, "Output must be a string, representing a path leading to a directory.")
+
+    console.log(ops)
     const { imageWeb, input: __input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
     const input = saniArrayOfOne(__input)
 

@@ -278,8 +278,9 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   const reses = normalizeResolution(resolutions)
 
   const doneIndex = keyIndex((codec: string) => keyIndex((pixels: number) => keyIndex((srcName: string) => false as false | ResablePromise<{path: string}>)))
-
-  return function (input: string | string[], outputDir: string, options: Options = {}) {
+  imageWeb.options = _options
+  return imageWeb
+  function imageWeb (input: string | string[], outputDir: string, options: Options = {}) {
     return new Promise<void>(async (res) => {
 
       const beforeProgramDoneCbs = [] as Function[]
@@ -571,7 +572,6 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       })
     })
   }
-  
 }
 
 class EndOfOperation {}
