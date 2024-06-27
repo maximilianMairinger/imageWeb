@@ -8,7 +8,7 @@ import * as cliProgress from "cli-progress"
 import logUpdate from "log-update"
 import { promises as fs } from "fs"
 const { SingleBar } = cliProgress
-import mkDir from "make-dir"
+import { makeDirectorySync } from "make-dir"
 import { mergeKeysDeep } from "circ-clone"
 import timoi from "timoi"
 import * as os from "os"
@@ -490,7 +490,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         }
         else if (fss.existsSync(outputDir) && !fss.lstatSync(outputDir).isDirectory()) throw new Error(`Output ${outputDir} points to an existing file. Expected a directory here. Terminating here, before any changes.`)
 
-        mkDir(outputDir)
+        makeDirectorySync(outputDir)
 
        
 
