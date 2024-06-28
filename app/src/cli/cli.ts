@@ -81,60 +81,60 @@ const outputSani = (input: string[], output?: string) => {
 
 function makeImageWebInstanceFromCliOptions(_input: any, _output: any, ops: any) {
   const cliOptions = saniCliSpecificOptions(ops)
-    const renderOptions = renderOptionsSani(ops)
-    const input = inputSani(_input)
-    const output = outputSani(input, _output)
+  const renderOptions = renderOptionsSani(ops)
+  const input = inputSani(_input)
+  const output = outputSani(input, _output)
 
-    const { algorithms: alg, resolutions: res } = cliOptions
+  const { algorithms: alg, resolutions: res } = cliOptions
 
-    let render: typeof imageWeb
+  let render: typeof imageWeb
 
-    if (alg && res) render = constrImageWeb(alg, res)
-    else {
-      let hasSpecificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
+  if (alg && res) render = constrImageWeb(alg, res)
+  else {
+    let hasSpecificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
 
-      (() => {
-        if (input.length !== 1) return
-        const inp = input[0] 
-        if (fs.existsSync(inp) && fs.lstatSync(inp).isDirectory()) return
-        if (fs.existsSync(output)) {
-          if (!fs.lstatSync(output).isDirectory()) {
-            if (!renderOptions.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
-          }
-          else return
+    (() => {
+      if (input.length !== 1) return
+      const inp = input[0] 
+      if (fs.existsSync(inp) && fs.lstatSync(inp).isDirectory()) return
+      if (fs.existsSync(output)) {
+        if (!fs.lstatSync(output).isDirectory()) {
+          if (!renderOptions.force) throw new Error("Output points to a existing file. Use -f to force override. Terminating here, before any changes.")
         }
-        let outputCodec: any
-        let inputCodec: any
-        for (const codec of commonAlgorithms) {
-          if (output.endsWith("." + codec)) outputCodec = codec
-          if (inp.endsWith("." + codec)) inputCodec = codec
-        }
-        if (alg) {
-          if (alg.length === 1) outputCodec = alg
-          else return
-        }
-        if (res) {
-          if (res.length !== 1) return
-        }
-        if (inputCodec && outputCodec) {
-          hasSpecificOutputWish = { alg: outputCodec, res: res ? {name: res[0] + "", displayName: ""} : { pixels: imageResolutions.UHD, displayName: "" } }
-        }
-      })()
+        else return
+      }
+      let outputCodec: any
+      let inputCodec: any
+      for (const codec of commonAlgorithms) {
+        if (output.endsWith("." + codec)) outputCodec = codec
+        if (inp.endsWith("." + codec)) inputCodec = codec
+      }
+      if (alg) {
+        if (alg.length === 1) outputCodec = alg
+        else return
+      }
+      if (res) {
+        if (res.length !== 1) return
+      }
+      if (inputCodec && outputCodec) {
+        hasSpecificOutputWish = { alg: outputCodec, res: res ? {name: res[0] + "", displayName: ""} : { pixels: imageResolutions.UHD, displayName: "" } }
+      }
+    })()
+  
     
-      
-    
-      render = hasSpecificOutputWish ? 
-        constrImageWeb([hasSpecificOutputWish.alg], [hasSpecificOutputWish.res]) : 
-        constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"])
-    }
+  
+    render = hasSpecificOutputWish ? 
+      constrImageWeb([hasSpecificOutputWish.alg], [hasSpecificOutputWish.res]) : 
+      constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"])
+  }
 
-    return {
-      imageWeb: render,
-      renderOptions,
-      cliOptions,
-      input,
-      output
-    }
+  return {
+    imageWeb: render,
+    renderOptions,
+    cliOptions,
+    input,
+    output
+  }
 }
 
 
@@ -155,6 +155,7 @@ if (!usingSubCommand) program
   .option('-s, --silent', 'silence stdout')
   .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
+  .option('--exclude', 'Exclude the following (comma separated) paths from the input')
   .requiredOption('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
   .requiredOption('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
@@ -181,6 +182,7 @@ program.command("watch")
   .option('-s, --silent', 'silence stdout')
   .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
+  .option('--exclude', 'Exclude the following (comma separated) paths from the input')
   .requiredOption('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
   .requiredOption('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
