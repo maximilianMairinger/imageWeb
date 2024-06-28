@@ -190,7 +190,6 @@ program.command("watch")
     saniString(_input, "Input must be a string, representing a path leading to a directory.")
     saniString(_output, "Output must be a string, representing a path leading to a directory.")
 
-    console.log(ops)
     const { imageWeb, input: __input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
     const input = saniArrayOfOne(__input)
 

@@ -108,8 +108,8 @@ class QuickPromise<T> extends Promise<T> {
   }
 }
 
-function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) => Promise<boolean | void> | boolean | void) {
-  return function getImg(dirs: string[], sub: string) {
+function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string, fromInputDir: string) => Promise<boolean | void> | boolean | void) {
+  return function getImg(dirs: string[], sub: string, ogDir?: string) {
     return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone) => {
       const proms: QuickPromise<any>[] = []
       const founds = []
@@ -118,17 +118,18 @@ function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string) =
       for (let dir of dirs) {
         totaloPromo.add((async () => {
           const subDir = pth.join(sub, dir)
+          const fromInputDir = ogDir !== undefined ? ogDir : dir
         
           if ((await fs.lstat(subDir)).isDirectory()) {
-            proms.add(getImg(await fs.readdir(subDir), subDir))
+            proms.add(getImg(await fs.readdir(subDir), subDir, fromInputDir))
           }
           else if (isImage(subDir)) {
             const fileName = removeExtension(subDir)
             const path = subDir
-            const didFind = {path, fileName}
+            const didFind = {path, fileName, fromInputDir}
             founds.add(didFind)
             if (foundCb) promsDone.add(new Promise<void>((res) => {
-              let r = foundCb(path, fileName)
+              let r = foundCb(path, fileName, fromInputDir)
               if (r instanceof Promise) r.then(go as any)
               else go(r as any)
               function go(accept: boolean = true) {
@@ -302,8 +303,8 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   
       const progress = new SingleBar({}, cliProgress.Presets.legacy)
 
-      function formatFileName(fileName: string) {
-        return pth.basename(fileName)
+      function formatFileName(fileName: string, commonDir: string) {
+        return pth.relative(commonDir, fileName)
       }
 
       const toOutFilname = (fileName: string, format: string, res: string) => {
@@ -315,15 +316,13 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
       const sharpInstancesIndex = new BorrowMap((inputPath: string) => sharp(inputPath))
 
-      function *getRenderTask(files: {path: string, fileName: string}[]) {
-        files.map((file) => {
-          file.fileName = formatFileName(file.fileName)
-        })
+      function *getRenderTask(files: {path: string, fileName: string, fromInputDir: string, formattedFileName: string}[]) {
+
         for (const format of formats) {
           const formatDoneIndex = doneIndex(format)
           for (const res of reses) {
             for (const file of files) {
-              const onlyFileName = toOutFilname(file.fileName, format, res.displayName)
+              const onlyFileName = toOutFilname(file.formattedFileName, format, res.displayName)
               const outFilename = pth.join(outputDir, onlyFileName)
               if (alreadyDone.includes(pth.resolve(outFilename))) continue
               yield async (processID: any) => {
@@ -350,7 +349,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                   const actualPixels = targetIsBiggerThanSrc ? hasPixels : wantedPixels
 
                   const resDoneIndex = formatDoneIndex(actualPixels)
-                  const isDoneProm = resDoneIndex(file.fileName)
+                  const isDoneProm = resDoneIndex(file.formattedFileName)
                   if (isDoneProm) {
                     // dont block execution. The copying of the file can happen in parallel without worrying about cpu usage
                     isDoneProm.then(async (isDone) => {
@@ -368,7 +367,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
 
                   const resAbleProm = new ResablePromise<{path: string}>()
-                  resDoneIndex(file.fileName, resAbleProm)
+                  resDoneIndex(file.formattedFileName, resAbleProm)
 
 
 
@@ -404,8 +403,8 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       
   
   
-      const queryAlreadyExsistingFiles = (name: string) => {
-        let fileName = formatFileName(name)
+      const queryAlreadyExsistingFiles = (name: string, fromInputDir: string) => {
+        let fileName = formatFileName(name, fromInputDir)
 
         if (!options.force) {
           for (let res of reses) {
@@ -427,20 +426,25 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         console.log("Searching...")
         let found = 0
         if (!options.legacyLogs) logUpdate(`Found ${found++} files`)
-        find = constructGetImg(!options.force ? (find, name) => {
+        find = constructGetImg(!options.force ? (find, name, fromInputDir) => {
           if (!options.legacyLogs) logUpdate(`Found ${found++} files`)
-          queryAlreadyExsistingFiles(name)
+          queryAlreadyExsistingFiles(name, fromInputDir)
         } : () => {
           if (!options.legacyLogs) logUpdate(`Found ${found++} files`)
         })
       }
-      else find = constructGetImg(!options.force ? (find, name) => {
-        queryAlreadyExsistingFiles(name)
+      else find = constructGetImg(!options.force ? (find, name, fromInputDir) => {
+        queryAlreadyExsistingFiles(name, fromInputDir)
       } : undefined)
       
-      find(input, "").done(async (files: {path: string, fileName: string}[]) => {
+      find(input, "").done(async (_files: {path: string, fileName: string, fromInputDir: string}[]) => {
+        let files = _files.map((file) => {
+          return {...file, formattedFileName: formatFileName(file.fileName, file.fromInputDir)}
+        })
         const totalNumberOfFilesPending = files.length * reses.length * formats.length
         if (totalNumberOfFilesPending === 1 && input.length === 1) {
+          const fromInputDir = files[0].fromInputDir
+          const formattedFileName = files[0].formattedFileName
           let hasSpesificOutputWish: any
           (() => {
             input = input[0]
@@ -467,7 +471,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           if (hasSpesificOutputWish) {
             const output = outputDir
             outputDir = pth.join(outputDir, "..")
-            files = [{path: input, fileName: removeExtension(output) /* will be basenamed later, first line at scheduleRenders */}]
+            files = [{path: input, formattedFileName, fromInputDir, fileName: removeExtension(output) /* will be basenamed later, first line at scheduleRenders */}]
             alreadyDone = []
             if (fss.existsSync(output)) {
               if (fss.lstatSync(output).isDirectory()) throw new Error("Output points to a existing directory. Terminating here, before any changes.")
@@ -476,7 +480,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                 if (pth.resolve(output) === pth.resolve(input)) {
                   const newInputPath = `${outputDir}/temp.${createHash(output, 8)}.${pth.basename(output)}`
                   
-                  files = [{path: newInputPath, fileName: removeExtension(output) /* will be basenamed later, first line at scheduleRenders */}]
+                  files = [{path: newInputPath, formattedFileName, fromInputDir, fileName: removeExtension(output) /* will be basenamed later, first line at scheduleRenders */}]
                   await fs.rename(output, newInputPath)
                   beforeProgramDoneCbs.push(async () => {
                     await fs.unlink(newInputPath)
@@ -490,7 +494,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         }
         else if (fss.existsSync(outputDir) && !fss.lstatSync(outputDir).isDirectory()) throw new Error(`Output ${outputDir} points to an existing file. Expected a directory here. Terminating here, before any changes.`)
 
-        makeDirectorySync(outputDir)
+        for (const { formattedFileName } of files) {
+          fs.mkdir(pth.dirname(pth.join(outputDir, formattedFileName)), { recursive: true });  
+        }
+        
 
        
 
@@ -574,7 +581,6 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   }
 }
 
-class EndOfOperation {}
 
 
 
