@@ -16,8 +16,13 @@ import * as crypto from "crypto";
 import keyIndex from "key-index"
 import { ResablePromise } from "more-proms"
 import sharp from "sharp"
+import LinkedList from "fast-linked-list"
 export { watch } from "./watch"
+import glob from "picomatch"
 
+
+type exclude = true
+type keep = false
 
 type Options = {
   silent?: boolean,
@@ -27,7 +32,8 @@ type Options = {
   debug?: boolean,
   dryRun?: boolean,
   onProgress?: (done: number, total: number) => void,
-  legacyLogs?: boolean
+  legacyLogs?: boolean,
+  exclude?: string | string[] | RegExp | ((path: string, pathWithoutExtension: string, fromInputDir: string) => (exclude | keep))
 }
 
 let _______threads = 1
@@ -108,11 +114,11 @@ class QuickPromise<T> extends Promise<T> {
   }
 }
 
-function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string, fromInputDir: string) => Promise<boolean | void> | boolean | void) {
+function constructGetImg(excludeF?: (path: string, pathWithoutExtension: string, fromInputDir: string) => Promise<boolean | void> | boolean | void) {
   return function getImg(dirs: string[], sub: string, ogDir?: string) {
     return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone) => {
       const proms: QuickPromise<any>[] = []
-      const founds = []
+      const founds = new LinkedList()
       const promsDone = []
       const totaloPromo = []
       for (let dir of dirs) {
@@ -127,13 +133,13 @@ function constructGetImg(foundCb?: (url: string, pathWithoutExtension: string, f
             const fileName = removeExtension(subDir)
             const path = subDir
             const didFind = {path, fileName, fromInputDir}
-            founds.add(didFind)
-            if (foundCb) promsDone.add(new Promise<void>((res) => {
-              let r = foundCb(path, fileName, fromInputDir)
+            const addToken = founds.push(didFind)
+            if (excludeF) promsDone.add(new Promise<void>((res) => {
+              let r = excludeF(path, fileName, fromInputDir)
               if (r instanceof Promise) r.then(go as any)
               else go(r as any)
-              function go(accept: boolean = true) {
-                if (!accept) founds.rmV(didFind)
+              function go(exclude: boolean = false) {
+                if (exclude) addToken.rm()
                 res()
               }
             }))
@@ -419,25 +425,37 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           }
         }
       }
-      
-      let find: ReturnType<typeof constructGetImg>
-      let alreadyDone = []
-      if (!options.silent) {
-        console.log("Searching...")
-        let found = 0
-        if (!options.legacyLogs) logUpdate(`Found ${found++} files`)
-        find = constructGetImg(!options.force ? (find, name, fromInputDir) => {
-          if (!options.legacyLogs) logUpdate(`Found ${found++} files`)
-          queryAlreadyExsistingFiles(name, fromInputDir)
-        } : () => {
-          if (!options.legacyLogs) logUpdate(`Found ${found++} files`)
-        })
+
+      let excludeF: undefined | ((path: string, pathWithoutExtension: string, fromInputDir: string) => boolean)
+      if (options.exclude !== undefined) {
+        if (typeof options.exclude === "string" || options.exclude instanceof Array) {
+          const exclArr = options.exclude instanceof Array ? options.exclude : [options.exclude]
+          const globs = exclArr.map((excl) => glob(excl))
+          excludeF = (path: string, pathWithoutExtension: string, fromInputDir: string) => {
+            return globs.some((glob) => glob(pth.relative(fromInputDir, path)))
+          }
+        }
+        else if (options.exclude instanceof RegExp) {
+          const excl = options.exclude
+          if (excl.flags.includes("g")) throw new Error("The exclude regex should not have the global flag, as regex in js are stateful and this would lead to unexpected results, depending on previous matches.")
+          excludeF = (path: string, pathWithoutExtension: string, fromInputDir: string) => excl.test(pth.relative(fromInputDir, path))
+        }
+        else excludeF = options.exclude
       }
-      else find = constructGetImg(!options.force ? (find, name, fromInputDir) => {
+      
+      let alreadyDone = []
+      if (!options.silent) console.log("Searching files...")
+      const find = constructGetImg(!options.force ? (path, name, fromInputDir) => {
+        if (excludeF !== undefined && excludeF(path, name, fromInputDir)) return true
         queryAlreadyExsistingFiles(name, fromInputDir)
-      } : undefined)
+      } : (path, name, fromInputDir) => {
+        if (excludeF !== undefined && excludeF(path, name, fromInputDir)) return true
+      })
       
       find(input, "").done(async (_files: {path: string, fileName: string, fromInputDir: string}[]) => {
+
+        if (!options.silent) console.log(`Found ${_files.length} files. Rendering...`)
+
         let files = _files.map((file) => {
           return {...file, formattedFileName: formatFileName(file.fileName, file.fromInputDir)}
         })

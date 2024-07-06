@@ -54,6 +54,10 @@ const saniCliSpecificOptions = sani({
 
 const renderOptionsSani = sani({
   silent: false,
+  "exclude?": new AND(
+    String, 
+    a => a.split(",").map(a => a.trim())
+  ),
   dynamicResolution: true,
   force: false,
   threads: new AND(
@@ -155,7 +159,7 @@ if (!usingSubCommand) program
   .option('-s, --silent', 'silence stdout')
   .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
-  .option('--exclude', 'Exclude the following (comma separated) paths from the input')
+  .option('--exclude <path(s)>', 'Exclude the following (comma separated) paths from the input. Each should be a glob (see https://www.npmjs.com/package/picomatch for reference). IMPORTANT: wrap this argument in quotes if you use wildcards, as otherwise linux will resolve them!')
   .requiredOption('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
   .requiredOption('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
@@ -182,7 +186,7 @@ program.command("watch")
   .option('-s, --silent', 'silence stdout')
   .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
-  .option('--exclude', 'Exclude the following (comma separated) paths from the input')
+  .option('--exclude <path(s)>', 'Exclude the following (comma separated) paths from the input. Each should be a glob (see https://www.npmjs.com/package/picomatch for reference). IMPORTANT: wrap this argument in quotes if you use wildcards, as otherwise linux will resolve them!')
   .requiredOption('-a, --algorithms <algorithms>', 'comma separated list of image compression algorithms. Available are "avif webp jpg tiff png"')
   .requiredOption('-r, --resolutions <resolutions>', 'comma separated list of requested resolutions. Pixels as number or resolution names (see https://github.com/maximilianMairinger/imageWeb#common-resolutions) are supported')
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
