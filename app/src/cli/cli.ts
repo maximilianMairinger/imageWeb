@@ -165,14 +165,11 @@ if (!usingSubCommand) program
   .option('-t, --threads <number>', 'How many threads shall be spawned in parallel. Note that more threads consume more memory and dont improve performance if above cpu cores. Defaults to cpu core count. Leave this be for best performance.')
   .option('-ll --legacyLogs', 'Enable legacy logs. Use this for environments that do not support log updates. Note that silent must be false for this to take effect.')
   .option('-d --debug', 'Enable debug logging. Defaults to false.')
-  .action((_input, _output, ops: any) => {
+  .action(async (_input, _output, ops: any) => {
     const { imageWeb, input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
 
     if (!renderOptions.silent) console.log(`Running version: v${config.version}`)
-    const prom = imageWeb(input, output)
-    if (!renderOptions.silent) prom.then(() => {
-      console.log("Done.")
-    })
+    await imageWeb(input, output)
   })
 
 

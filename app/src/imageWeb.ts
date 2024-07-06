@@ -9,7 +9,7 @@ import logUpdate from "log-update"
 import { promises as fs } from "fs"
 const { SingleBar } = cliProgress
 import { makeDirectorySync } from "make-dir"
-import { mergeKeysDeep } from "circ-clone"
+import { mergeKeysDeep, cloneKeys } from "circ-clone"
 import timoi from "timoi"
 import * as os from "os"
 import * as crypto from "crypto";
@@ -115,16 +115,17 @@ class QuickPromise<T> extends Promise<T> {
 }
 
 function constructGetImg(excludeF?: (path: string, pathWithoutExtension: string, fromInputDir: string) => Promise<boolean | void> | boolean | void) {
-  return function getImg(dirs: string[], sub: string, ogDir?: string) {
+  return function getImg(dirs: string[], sub: string, ogDir?: string | string[]) {
     return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone) => {
       const proms: QuickPromise<any>[] = []
       const founds = new LinkedList()
       const promsDone = []
       const totaloPromo = []
-      for (let dir of dirs) {
+      for (let i = 0; i < dirs.length; i++) {
+        const dir = dirs[i]
         totaloPromo.add((async () => {
           const subDir = pth.join(sub, dir)
-          const fromInputDir = ogDir !== undefined ? ogDir : dir
+          const fromInputDir = ogDir !== undefined ? ogDir instanceof Array ? ogDir[i] : ogDir : dir
         
           if ((await fs.lstat(subDir)).isDirectory()) {
             proms.add(getImg(await fs.readdir(subDir), subDir, fromInputDir))
@@ -281,14 +282,14 @@ function constrFactorize(factor: number) {
 // export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options?: Options)
 // export function constrImageWeb(formats: ImageFormats[], resolutions: (`${number}p`)[], _options?: Options)
 export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResolutions | Pixels | `${number}p` | {pixels: Pixels, displayName?: string} | {name: string, displayName?: string} | WidthHeight)[], _options: Options = {}) {
-  _options = mergeKeysDeep(defaultOptions, _options)
+  _options = mergeKeysDeep(cloneKeys(defaultOptions), _options)
   const reses = normalizeResolution(resolutions)
 
   const doneIndex = keyIndex((codec: string) => keyIndex((pixels: number) => keyIndex((srcName: string) => false as false | ResablePromise<{path: string}>)))
   imageWeb.options = _options
   return imageWeb
-  function imageWeb (input: string | string[], outputDir: string, options: Options = {}) {
-    return new Promise<void>(async (res) => {
+  function imageWeb(input: string | string[], outputDir: string, options: Partial<Options & {overrideInputSource: string | string[]}> = {}) {
+    return new Promise<{effectedFiles: number}>(async (res) => {
 
       const beforeProgramDoneCbs = [] as Function[]
 
@@ -300,7 +301,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       input.forEach((input) => {
         if (!fss.existsSync(input)) throw new Error(`Input ${input} cannot be found`)
       })
-      options = mergeKeysDeep(_options, options)
+      options = mergeKeysDeep(cloneKeys(_options), options)
 
       if (options.debug || options.dryRun) options.legacyLogs = true // the progress bar swallows all logs during the process
 
@@ -436,7 +437,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       })
 
 
-      find(input, "").done(async (_files: {path: string, fileName: string, fromInputDir: string}[]) => {
+      find(input, "", options.overrideInputSource).done(async (_files: {path: string, fileName: string, fromInputDir: string}[]) => {
 
         if (!options.silent) console.log(`Found ${_files.length} files. Rendering...`)
 
@@ -577,7 +578,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
           progress.stop()
           console.log(`Done. Took ${time.str()}`)
         }
-        res()
+        res({effectedFiles: todoCount})
       })
     })
   }
@@ -585,7 +586,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
 
 
 
-export function parseExcludeFunction(excludeSrc?: Options["exclude"]) {
+function parseExcludeFunction(excludeSrc?: Options["exclude"]) {
   let excludeF: undefined | ((path: string, fromInputDir: string) => boolean)
   if (excludeSrc !== undefined) {
     if (typeof excludeSrc === "string" || excludeSrc instanceof Array) {
