@@ -11,6 +11,17 @@ rollup.node.test.config.js
 rollup.web.common.config.js
 rollup.node.dev.config.js
 rollup.web.dev.config.js
+rollup.node.common.config.mjs
+rollup.node.dev.config.mjs
+rollup.node.prod.config.mjs
+rollup.node.test.config.mjs
+rollup.prod.config.mjs
+rollup.web.common.config.mjs
+rollup.web.dev.config.mjs
+tsconfig.json
+tsconfig.prod.json
+tsconfig.test.json
+
 jest.config.js
 
 try
