@@ -93,7 +93,7 @@ function makeImageWebInstanceFromCliOptions(_input: any, _output: any, ops: any)
 
   let render: typeof imageWeb
 
-  if (alg && res) render = constrImageWeb(alg, res)
+  if (alg && res) render = constrImageWeb(alg, res, renderOptions)
   else {
     let hasSpecificOutputWish: { alg: any, res: { pixels: number, displayName: string } | { name: string, displayName?: string } }
 
@@ -128,8 +128,8 @@ function makeImageWebInstanceFromCliOptions(_input: any, _output: any, ops: any)
     
   
     render = hasSpecificOutputWish ? 
-      constrImageWeb([hasSpecificOutputWish.alg], [hasSpecificOutputWish.res]) : 
-      constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"])
+      constrImageWeb([hasSpecificOutputWish.alg], [hasSpecificOutputWish.res], renderOptions) : 
+      constrImageWeb(alg ? alg : ["jpg", "webp", "avif"], res ? res : ["UHD", "FHD", "PREV"], renderOptions)
   }
 
   return {
@@ -169,7 +169,7 @@ if (!usingSubCommand) program
     const { imageWeb, input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
 
     if (!renderOptions.silent) console.log(`Running version: v${config.version}`)
-    const prom = imageWeb(input, output, renderOptions)
+    const prom = imageWeb(input, output)
     if (!renderOptions.silent) prom.then(() => {
       console.log("Done.")
     })

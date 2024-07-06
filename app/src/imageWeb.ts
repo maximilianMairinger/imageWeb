@@ -33,7 +33,7 @@ type Options = {
   dryRun?: boolean,
   onProgress?: (done: number, total: number) => void,
   legacyLogs?: boolean,
-  exclude?: string | string[] | RegExp | ((path: string, pathWithoutExtension: string, fromInputDir: string) => (exclude | keep))
+  exclude?: string | string[] | RegExp | ((path: string, fromInputDir: string) => (exclude | keep))
 }
 
 let _______threads = 1
@@ -407,7 +407,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         
       }
       
-  
+      let alreadyDone = []
   
       const queryAlreadyExsistingFiles = (name: string, fromInputDir: string) => {
         let fileName = formatFileName(name, fromInputDir)
@@ -426,32 +426,16 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         }
       }
 
-      let excludeF: undefined | ((path: string, pathWithoutExtension: string, fromInputDir: string) => boolean)
-      if (options.exclude !== undefined) {
-        if (typeof options.exclude === "string" || options.exclude instanceof Array) {
-          const exclArr = options.exclude instanceof Array ? options.exclude : [options.exclude]
-          const globs = exclArr.map((excl) => glob(excl))
-          excludeF = (path: string, pathWithoutExtension: string, fromInputDir: string) => {
-            return globs.some((glob) => glob(pth.relative(fromInputDir, path)))
-          }
-        }
-        else if (options.exclude instanceof RegExp) {
-          const excl = options.exclude
-          if (excl.flags.includes("g")) throw new Error("The exclude regex should not have the global flag, as regex in js are stateful and this would lead to unexpected results, depending on previous matches.")
-          excludeF = (path: string, pathWithoutExtension: string, fromInputDir: string) => excl.test(pth.relative(fromInputDir, path))
-        }
-        else excludeF = options.exclude
-      }
-      
-      let alreadyDone = []
+      const excludeF = parseExcludeFunction(options.exclude)
       if (!options.silent) console.log("Searching files...")
       const find = constructGetImg(!options.force ? (path, name, fromInputDir) => {
-        if (excludeF !== undefined && excludeF(path, name, fromInputDir)) return true
+        if (excludeF !== undefined && excludeF(path, fromInputDir)) return true
         queryAlreadyExsistingFiles(name, fromInputDir)
       } : (path, name, fromInputDir) => {
-        if (excludeF !== undefined && excludeF(path, name, fromInputDir)) return true
+        if (excludeF !== undefined && excludeF(path, fromInputDir)) return true
       })
-      
+
+
       find(input, "").done(async (_files: {path: string, fileName: string, fromInputDir: string}[]) => {
 
         if (!options.silent) console.log(`Found ${_files.length} files. Rendering...`)
@@ -599,6 +583,27 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   }
 }
 
+
+
+export function parseExcludeFunction(excludeSrc?: Options["exclude"]) {
+  let excludeF: undefined | ((path: string, fromInputDir: string) => boolean)
+  if (excludeSrc !== undefined) {
+    if (typeof excludeSrc === "string" || excludeSrc instanceof Array) {
+      const exclArr = excludeSrc instanceof Array ? excludeSrc : [excludeSrc]
+      const globs = exclArr.map((excl) => glob(excl))
+      excludeF = (path: string, fromInputDir: string) => {
+        return globs.some((glob) => glob(pth.relative(fromInputDir, path)))
+      }
+    }
+    else if (excludeSrc instanceof RegExp) {
+      const excl = excludeSrc
+      if (excl.flags.includes("g")) throw new Error("The exclude regex should not have the global flag, as regex in js are stateful and this would lead to unexpected results, depending on previous matches.")
+      excludeF = (path: string, fromInputDir: string) => excl.test(pth.relative(fromInputDir, path))
+    }
+    else excludeF = excludeSrc
+  }
+  return excludeF
+}
 
 
 
