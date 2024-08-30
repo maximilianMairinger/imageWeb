@@ -133,7 +133,7 @@ function constructGetImg(excludeF?: (path: string, pathWithoutExtension: string,
           else if (isImage(subDir)) {
             const fileName = removeExtension(subDir)
             const path = subDir
-            const didFind = {path, fileName, fromInputDir}
+            const didFind = { path, fileName, fromInputDir: fromInputDir === path ? pth.join(path, "..") : fromInputDir }
             const addToken = founds.push(didFind)
             if (excludeF) promsDone.add(new Promise<void>((res) => {
               let r = excludeF(path, fileName, fromInputDir)
