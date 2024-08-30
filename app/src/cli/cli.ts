@@ -58,6 +58,7 @@ const renderOptionsSani = sani({
     String, 
     a => a.split(",").map(a => a.trim())
   ),
+  dryRun: false,
   dynamicResolution: true,
   force: false,
   threads: new AND(
@@ -157,6 +158,7 @@ if (!usingSubCommand) program
   .argument('<input>', 'Input directory to (deeply) query files from. May also be a filename. May also be multiple directories or filenames separated by commas. Put your filenames in quotes if they are not safe.')
   .argument('<output>', 'Folder where to dump the output file(s). Or, if the input is a single file, you may also specify a file name here, with a valid extension as codec (e.g. webp or png), thus e.g. "myImg.jpg".')
   .option('-s, --silent', 'silence stdout')
+  .option('--dryRun', 'Dry run, do not actually convert images, nothing will be written to disk')
   .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
   .option('--exclude <path(s)>', 'Exclude the following (comma separated) paths from the input. Each should be a glob (see https://www.npmjs.com/package/picomatch for reference). IMPORTANT: wrap this argument in quotes if you use wildcards, as otherwise linux will resolve them!')
@@ -181,6 +183,7 @@ program.command("watch")
   .argument('<input>', 'Input directory to (deeply) query files from.')
   .argument('<output>', 'Folder where to dump the output files.')
   .option('-s, --silent', 'silence stdout')
+  .option('--dryRun', 'Dry run, do not actually convert images, nothing will be written to disk')
   .option('-ndr, --no-dynamicResolution', 'Disable dynamic resolution mitigation')
   .option('-f, --force', 'force override files when one with the same name is found')
   .option('--exclude <path(s)>', 'Exclude the following (comma separated) paths from the input. Each should be a glob (see https://www.npmjs.com/package/picomatch for reference). IMPORTANT: wrap this argument in quotes if you use wildcards, as otherwise linux will resolve them!')
