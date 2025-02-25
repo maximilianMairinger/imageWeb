@@ -170,8 +170,17 @@ if (!usingSubCommand) program
   .action(async (_input, _output, ops: any) => {
     const { imageWeb, input, output, cliOptions, renderOptions } = makeImageWebInstanceFromCliOptions(_input, _output, ops)
 
+    // npm run buildCJS; node --inspect-brk app/dist/cjs/cli/cli.js /Users/maximilianmairinger/Desktop/testForju2/app/res/img /Users/maximilianmairinger/Desktop/testForju2/public/res/img/dist --resolutions PREV -a webp
+
     if (!renderOptions.silent) console.log(`Running version: v${config.version}`)
-    await imageWeb(input, output)
+    try {
+      await imageWeb(input, output)
+    }
+    catch(e) {
+      // todo: doesnt get propagated properly
+      console.error(e.message)
+    }
+    
   })
 
 

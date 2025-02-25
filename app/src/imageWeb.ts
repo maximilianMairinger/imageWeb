@@ -92,8 +92,8 @@ function createHash(data, len) {
 const unionResWithNameSymbol = "@"
 
 class QuickPromise<T> extends Promise<T> {
-  constructor(call: (resQuick: Function, resDone: Function) => void) {
-    super((res) => {
+  constructor(call: (resQuick: Function, resDone: Function, rej: (reason: any) => void) => void) {
+    super((res, rej) => {
       call((val) => {
         res(val)
       }, (val) => {
@@ -103,7 +103,7 @@ class QuickPromise<T> extends Promise<T> {
           else f(val)
           return this
         }
-      })
+      }, rej)
     })
   }
   private dones = []
@@ -116,7 +116,7 @@ class QuickPromise<T> extends Promise<T> {
 
 function constructGetImg(excludeF?: (path: string, pathWithoutExtension: string, fromInputDir: string) => Promise<boolean | void> | boolean | void) {
   return function getImg(dirs: string[], sub: string, ogDir?: string | string[]) {
-    return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone) => {
+    return new QuickPromise<{ path: string, fileName: string }[]>((resQuick, resDone, rej) => {
       const proms: QuickPromise<any>[] = []
       const founds = new LinkedList()
       const promsDone = []
@@ -156,10 +156,10 @@ function constructGetImg(excludeF?: (path: string, pathWithoutExtension: string,
           resQuick(r)
           return r
         })
-        Promise.all([Promise.all(proms), foundProm, ...promsDone, ...proms.Inner("done", [])]).then(([found]) => {
-          resDone([...founds, ...(found as any).flat()])
+        return Promise.all([Promise.all(proms), foundProm, ...promsDone, ...proms.Inner("done", [])]).then(([found]) => {
+          return resDone([...founds, ...(found as any).flat()])
         })
-      })
+      }).catch(rej)
     })
   }
 }
@@ -289,7 +289,10 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
   imageWeb.options = _options
   return imageWeb
   function imageWeb(input: string | string[], outputDir: string, options: Partial<Options & {overrideInputSource: string | string[]}> = {}) {
-    return new Promise<{effectedFiles: number}>(async (res) => {
+    return new Promise<{effectedFiles: number}>(async (res, rej) => {try {
+      
+
+      
 
       const beforeProgramDoneCbs = [] as Function[]
 
@@ -319,6 +322,17 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
       }
 
 
+      for(const inp of input) {
+        const dups = await checkIfTwoFilesOnlyDifferInExtRec(inp)
+        if (dups.size > 0) {
+          let msg = `The following files only differ in their extension, regarding the following input "${inp}":`
+          for (const [fileName, exts] of dups) {
+            msg += `\n${fileName}: ${exts.join(", ")}`
+          }
+          throw new Error(msg)
+        }
+      }
+      
 
 
       const sharpInstancesIndex = new BorrowMap((inputPath: string) => sharp(inputPath))
@@ -346,7 +360,6 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
                     }
                     else throw new Error(`Output filename ${outFilename} already exists and is a dir! This shouldn't happen, as this should have been detected beforehand (at the start of the program). Make sure that no other program is writing to this directory. Terminating here. Be aware, some files may have been computed and written to disk already.`)
                   }
-
 
                   const wantedPixels = res.pixels * (options.dynamicResolution ? compressionOffset[format] : 1)
                   const meta = await img.metadata()
@@ -580,7 +593,7 @@ export function constrImageWeb(formats: ImageFormats[], resolutions: (ImageResol
         }
         res({effectedFiles: todoCount})
       })
-    })
+    } catch(e) { rej(e) } })
   }
 }
 
@@ -611,3 +624,87 @@ function parseExcludeFunction(excludeSrc?: Options["exclude"]) {
 export const imageweb = constrImageWeb(["avif", "webp", "jpg"], ["UHD", "FHD", "PREV"])
 
 export default imageweb
+
+
+
+
+
+
+
+
+
+async function isDir(path: string) {
+  return (await fs.lstat(path)).isDirectory()  
+}
+
+
+async function checkIfTwoFilesOnlyDifferInExt(folder: string, displayRelativeFromFolder: string = folder) {
+  const files = await fs.readdir(folder)
+  const exts = files.map((file) => pth.extname(file).substring(1))
+  const baseNames = files.map((file) => pth.basename(file, pth.extname(file)))
+  
+  
+  const dupIndex = keyIndex((fileNameWOExt: string) => [])
+  const listOfDups = new Set<string>()
+  const proms = []
+  for (let i = 0; i < files.length; i++) {
+    const baseName = baseNames[i]
+    const ext = exts[i]
+    const fileName = pth.join(folder, baseName)
+    const uniqueDisplayName = pth.relative(displayRelativeFromFolder, fileName)
+    if (listOfDups.has(fileName)) continue
+    proms.push((async () => {
+      if (!(await isDir(pth.join(folder, files[i])))) {
+        const ar = dupIndex(uniqueDisplayName)
+        ar.push(ext)
+        if (ar.length > 1) listOfDups.add(uniqueDisplayName)
+      }
+    })())
+  }
+  await Promise.all(proms)
+  const dups = new Map<string, string[]>()
+  for (const dup of listOfDups) {
+    dups.set(dup, dupIndex(dup))
+  }
+  return dups
+}
+
+async function checkIfTwoFilesOnlyDifferInExtRec(folder: string) {
+  const ogFolder = folder
+  async function rec(folder: string) {
+    const files = await fs.readdir(folder)
+    const globalDups = new Map<string, string[]>()
+    async function mergeIntoDups(dups: Map<string, string[]>) {
+      
+      for (const [key, value] of dups) {
+        if (globalDups.has(key)) {
+          throw new Error("This really shouldnt happen, do we need to account subfolders?")
+        }
+        globalDups.set(key, value)
+      }
+    }
+
+
+    const dups = await checkIfTwoFilesOnlyDifferInExt(folder, ogFolder)
+    mergeIntoDups(dups)
+
+    const proms = []
+    for (const file of files) {
+      const path = pth.join(folder, file);
+      proms.push((async () => {
+        if (await isDir(path)) {
+          const dups = await checkIfTwoFilesOnlyDifferInExtRec(path)
+          mergeIntoDups(dups)
+        }
+      })()) 
+    }
+
+    
+    
+
+    await Promise.all(proms)
+
+    return globalDups
+  } 
+  return rec(folder)
+}
